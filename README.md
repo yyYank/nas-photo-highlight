@@ -1,0 +1,2 @@
+# synology-photo-highlight
+synologyのPhotoアプリのハイライト機能作成とpush通知サーバー
