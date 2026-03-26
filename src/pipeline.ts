@@ -5,7 +5,7 @@ import { pickBestShots } from './scorer/imageScore.js'
 import { generateHighlight } from './generator/highlight.js'
 import { highlightDb } from './db/index.js'
 import { config } from './config.js'
-import { syncViewerAssets } from './viewerAssets.js'
+import { prepareOutputPath } from './outputPath.js'
 
 /**
  * Write highlights.json to NAS output folder.
@@ -25,8 +25,7 @@ function exportManifest() {
 
 export async function runPipeline({ force = false } = {}) {
   console.log('🔍 Scanning photos...')
-  mkdirSync(config.nas.outputPath, { recursive: true })
-  syncViewerAssets(config.nas.outputPath)
+  prepareOutputPath(config.nas.outputPath)
 
   const groups = await groupImages()
   console.log(`📁 Found ${groups.size} groups`)
