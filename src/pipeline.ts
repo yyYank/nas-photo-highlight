@@ -6,6 +6,7 @@ import { generateHighlight } from './generator/highlight.js'
 import { highlightDb } from './db/index.js'
 import { config } from './config.js'
 import { prepareOutputPath } from './outputPath.js'
+import { saveLastRunSummary, type PipelineRunSummary } from './notify.js'
 
 /**
  * Write highlights.json to NAS output folder.
@@ -23,7 +24,7 @@ function exportManifest() {
   console.log(`📄 Manifest written: ${dest}`)
 }
 
-export async function runPipeline({ force = false } = {}) {
+export async function runPipeline({ force = false } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning photos...')
   prepareOutputPath(config.nas.outputPath)
 
@@ -31,6 +32,7 @@ export async function runPipeline({ force = false } = {}) {
   console.log(`📁 Found ${groups.size} groups`)
 
   let generated = 0
+  const highlights: PipelineRunSummary['highlights'] = []
 
   for (const [key, images] of groups) {
     if (images.length < config.processing.minImagesToGenerate) {
@@ -52,11 +54,25 @@ export async function runPipeline({ force = false } = {}) {
     await generateHighlight(best, outputPath)
 
     highlightDb.upsert(key, outputPath, best.length)
+    highlights.push({
+      groupKey: key,
+      outputPath,
+      imageCount: best.length,
+    })
     generated++
   }
 
   // Always refresh the manifest so the NAS viewer stays up to date
   exportManifest()
 
+  const summary = {
+    generated,
+    finishedAt: new Date().toISOString(),
+    outputPath: config.nas.outputPath,
+    highlights,
+  }
+  saveLastRunSummary(config.nas.outputPath, summary)
+
   console.log(`\n✅ Pipeline complete — ${generated} new highlight(s) generated`)
+  return summary
 }

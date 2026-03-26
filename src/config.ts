@@ -10,6 +10,9 @@ export const config = {
     minImagesToGenerate: Number(process.env.MIN_IMAGES_TO_GENERATE ?? 5),
   },
   bgmPath: process.env.BGM_PATH ?? '',
+  notification: {
+    webhookUrl: process.env.NOTIFY_WEBHOOK_URL ?? '',
+  },
   port: Number(process.env.PORT ?? 8888),
   cronSchedule: process.env.CRON_SCHEDULE ?? '0 2 * * *',
 } as const

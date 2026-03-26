@@ -53,17 +53,17 @@ cp .env.example .env
 ## 使い方
 
 ```bash
-# すぐにパイプラインを実行（新しいグループをすべて処理）
-bun src/index.ts --run-now
+# 手動でハイライトを生成
+bun run generate
 
-# すべて強制再生成（既処理を無視）
-bun src/index.ts --run-now --force
+# 直近の生成結果を通知
+bun run notify
 
-# サーバ起動 + 定期実行パイプライン
-bun src/index.ts
+# 定期実行して Web UI を公開
+bun run schedule
 
-# フォルダ単位でスコアリングをテスト
-bun src/scorer/imageScore.ts /path/to/photos
+# 既存ハイライトを強制再生成
+bun run generate:force
 ```
 
 Web UI は `http://localhost:8888`（またはこのマシンの LAN IP）で利用できます。
@@ -103,6 +103,7 @@ src/
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
 | `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
+| `NOTIFY_WEBHOOK_URL` | _(empty)_ | 直近の生成結果を送る webhook URL |
 | `PORT` | `8888` | Web UI のポート番号 |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
 

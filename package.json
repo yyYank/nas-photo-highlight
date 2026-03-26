@@ -4,11 +4,14 @@
   "description": "Auto-generate highlight movies from NAS photos",
   "type": "module",
   "scripts": {
+    "generate": "bun src/index.ts --run-now",
+    "generate:force": "bun src/index.ts --run-now --force",
+    "notify": "bun src/index.ts --notify",
+    "schedule": "bun src/index.ts",
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
+    "score": "bun src/scorer/imageScore.ts",
     "build": "bun build src/index.ts --outdir dist",
     "test": "bun test",
-    "score:test": "bun src/scorer/imageScore.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
