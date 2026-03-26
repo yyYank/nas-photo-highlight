@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import { validateConfig, config } from './config.js'
 import { runPipeline } from './pipeline.js'
+import { startWebServer } from './server.js'
 
 validateConfig()
 
@@ -12,6 +13,8 @@ if (args.includes('--run-now')) {
   process.exit(0)
 } else {
   // Daemon mode: run on schedule
+  startWebServer()
+  console.log(`🌐 Web UI started: http://localhost:${config.port}`)
   console.log(`📅 Scheduler started. Pipeline runs at: ${config.cronSchedule}`)
   console.log('   To run immediately: bun src/index.ts --run-now\n')
 
