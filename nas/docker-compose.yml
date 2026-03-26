@@ -3,7 +3,7 @@ services:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "8888:80"
     volumes:
       # NASのhighlightsフォルダをNginxのドキュメントルートにマウント
       # SynologyのパスはDSMのFile Stationで確認（通常 /volume1/xxxx）

@@ -10,7 +10,7 @@ export const config = {
     minImagesToGenerate: Number(process.env.MIN_IMAGES_TO_GENERATE ?? 5),
   },
   bgmPath: process.env.BGM_PATH ?? '',
-  port: Number(process.env.PORT ?? 3000),
+  port: Number(process.env.PORT ?? 8888),
   cronSchedule: process.env.CRON_SCHEDULE ?? '0 2 * * *',
 } as const
 

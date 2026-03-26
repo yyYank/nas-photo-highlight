@@ -66,7 +66,7 @@ bun src/index.ts
 bun src/scorer/imageScore.ts /path/to/photos
 ```
 
-Web UI は `http://localhost:3000`（またはこのマシンの LAN IP）で利用できます。
+Web UI は `http://localhost:8888`（またはこのマシンの LAN IP）で利用できます。
 
 ---
 
@@ -103,7 +103,7 @@ src/
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
 | `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
-| `PORT` | `3000` | Web UI のポート番号 |
+| `PORT` | `8888` | Web UI のポート番号 |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
 
 ---
