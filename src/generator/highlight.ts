@@ -40,7 +40,7 @@ export function generateHighlight(
         .input(config.bgmPath)
         .audioCodec('aac')
         .audioBitrate('192k')
-        .shortest()
+        .outputOptions(['-shortest'])
     } else {
       cmd = cmd.noAudio()
     }

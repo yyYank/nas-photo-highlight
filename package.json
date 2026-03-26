@@ -7,6 +7,7 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist",
+    "test": "bun test",
     "score:test": "bun src/scorer/imageScore.ts",
     "lint": "tsc --noEmit"
   },

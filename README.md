@@ -35,11 +35,15 @@ cd synology-photo-highlight
 # 2. 依存関係をインストール
 bun install
 
-# 3. 設定
+# 3. 動作確認
+bun test
+bun run lint
+
+# 4. 設定
 cp .env.example .env
 # .env に NAS のマウントパスを設定
 
-# 4. NAS をマウント（Mac の例）
+# 5. NAS をマウント（Mac の例）
 # Finder → 移動 → サーバへ接続 → smb://your-nas-ip
 # or: open smb://your-nas-ip
 ```
@@ -81,8 +85,7 @@ src/
 │   └── highlight.ts  # ffmpeg によるハイライト動画生成
 ├── db/
 │   └── index.ts      # SQLite（生成済みハイライトを追跡）
-├── api/
-│   └── server.ts     # Hono Web サーバ
+├── server.ts         # ローカル Web UI の静的配信
 └── web/
     └── index.html    # LAN ビューア UI
 ```
