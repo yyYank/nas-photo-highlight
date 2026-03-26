@@ -29,7 +29,7 @@ Synology NAS 上の写真からハイライト動画を自動生成します。
 
 ```bash
 # 1. クローン
-git clone https://github.com/yourname/synology-photo-highlight.git
+git clone https://github.com/yyYank/synology-photo-highlight.git
 cd synology-photo-highlight
 
 # 2. 依存関係をインストール
