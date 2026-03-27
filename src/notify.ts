@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
 import { config } from './config.js'
+import { highlightDb } from './db/index.js'
 
 export interface PipelineHighlightSummary {
   groupKey: string
@@ -39,36 +40,56 @@ function buildHighlightMediaRelativePath(outputPath: string): string {
 
 export function buildNotificationMessage(
   summary: PipelineRunSummary,
-  { baseUrl = config.notification.baseUrl }: { baseUrl?: string } = {}
+  {
+    baseUrl = config.notification.baseUrl,
+    recentHighlights = [],
+  }: {
+    baseUrl?: string
+    recentHighlights?: PipelineHighlightSummary[]
+  } = {}
 ): string {
   const lines = [
-    `nas-photo-highlight: ${summary.generated} new highlight(s)`,
-    `finished_at: ${summary.finishedAt}`,
-    `output_path: ${summary.outputPath}`,
+    `nas-photo-highlight: 新規ハイライト ${summary.generated} 件`,
+    `完了日時: ${summary.finishedAt}`,
+    `出力先: ${summary.outputPath}`,
   ]
 
+  if (baseUrl) {
+    const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+    lines.push('ビューア:')
+    lines.push(`${normalizedBaseUrl}/`)
+  }
+
   if (summary.highlights.length > 0) {
-    lines.push('highlights:')
+    lines.push('生成結果:')
     for (const highlight of summary.highlights) {
-      lines.push(`- ${highlight.groupKey} (${highlight.imageCount} photos)`)
+      lines.push(`- ${highlight.groupKey}（${highlight.imageCount} 枚）`)
     }
 
     if (baseUrl) {
       const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
-      lines.push('links:')
+      lines.push('リンク:')
       for (const highlight of summary.highlights) {
         lines.push(`- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`)
       }
     }
   } else {
-    lines.push('highlights: none')
+    lines.push('生成結果: なし')
+
+    if (baseUrl && recentHighlights.length > 0) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+      lines.push('最新ハイライト:')
+      for (const highlight of recentHighlights) {
+        lines.push(`- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`)
+      }
+    }
   }
 
   return lines.join('\n')
 }
 
 export function buildNotificationSubject(summary: PipelineRunSummary): string {
-  return `nas-photo-highlight: ${summary.generated} new highlight(s)`
+  return `nas-photo-highlight: 新規ハイライト ${summary.generated} 件`
 }
 
 interface SendMailMessage {
@@ -98,6 +119,7 @@ export async function sendNotification(
   {
     provider = config.notification.provider,
     baseUrl = config.notification.baseUrl,
+    recentHighlights = [],
     webhookUrl = config.notification.webhookUrl,
     gmail = config.notification.gmail,
     send = fetch,
@@ -105,6 +127,7 @@ export async function sendNotification(
   }: {
     provider?: 'webhook' | 'gmail'
     baseUrl?: string
+    recentHighlights?: PipelineHighlightSummary[]
     webhookUrl?: string
     gmail?: {
       from: string
@@ -130,7 +153,7 @@ export async function sendNotification(
       from: gmail.from,
       to: gmail.to,
       subject: buildNotificationSubject(summary),
-      text: buildNotificationMessage(summary, { baseUrl }),
+      text: buildNotificationMessage(summary, { baseUrl, recentHighlights }),
     })
     return
   }
@@ -142,7 +165,7 @@ export async function sendNotification(
   const response = await send(webhookUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text: buildNotificationMessage(summary, { baseUrl }) }),
+    body: JSON.stringify({ text: buildNotificationMessage(summary, { baseUrl, recentHighlights }) }),
   })
 
   if (!response.ok) {
@@ -152,5 +175,10 @@ export async function sendNotification(
 
 export async function notifyLatestRun(outputPath: string) {
   const summary = loadLastRunSummary(outputPath)
-  await sendNotification(summary)
+  const recentHighlights = highlightDb.list().slice(0, 3).map((highlight) => ({
+    groupKey: highlight.group_key,
+    outputPath: highlight.output_path,
+    imageCount: highlight.image_count,
+  }))
+  await sendNotification(summary, { recentHighlights })
 }

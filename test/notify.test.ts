@@ -63,10 +63,10 @@ describe('notify', () => {
       ],
     })
 
-    expect(message).toContain('2 new highlight(s)')
+    expect(message).toContain('新規ハイライト 2 件')
     expect(message).toContain('2026-03-20')
     expect(message).toContain('2026-03-21')
-    expect(message).toContain('/Volumes/highlights')
+    expect(message).toContain('出力先: /Volumes/highlights')
   })
 
   it('BASE_URL があると各ハイライトの URL を通知文に含める', () => {
@@ -86,8 +86,62 @@ describe('notify', () => {
       { baseUrl: 'http://192.168.1.10:8888' }
     )
 
-    expect(message).toContain('links:')
+    expect(message).toContain('リンク:')
     expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
+  })
+
+  it('BASE_URL があると Viewer URL を常に通知文に含める', () => {
+    const message = buildNotificationMessage(
+      {
+        generated: 0,
+        finishedAt: '2026-03-26T12:34:56.000Z',
+        outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03',
+        highlights: [],
+      },
+      {
+        baseUrl: 'http://192.168.1.10:8888',
+        recentHighlights: [
+          {
+            groupKey: '2026-03-21',
+            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            imageCount: 12,
+          },
+        ],
+      }
+    )
+
+    expect(message).toContain('ビューア:')
+    expect(message).toContain('http://192.168.1.10:8888/')
+  })
+
+  it('新規生成がなくても recentHighlights があれば URL を通知文に含める', () => {
+    const message = buildNotificationMessage(
+      {
+        generated: 0,
+        finishedAt: '2026-03-26T12:34:56.000Z',
+        outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03',
+        highlights: [],
+      },
+      {
+        baseUrl: 'http://192.168.1.10:8888',
+        recentHighlights: [
+          {
+            groupKey: '2026-03-21',
+            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            imageCount: 12,
+          },
+          {
+            groupKey: '2026-03-07',
+            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-07_highlight.mp4',
+            imageCount: 13,
+          },
+        ],
+      }
+    )
+
+    expect(message).toContain('最新ハイライト:')
+    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
+    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-07_highlight.mp4')
   })
 
   it('webhook へ直近結果を送る', async () => {
@@ -144,7 +198,7 @@ describe('notify', () => {
     expect(sendMail.mock.calls[0]?.[0]).toEqual({
       from: 'from@example.com',
       to: 'to@example.com',
-      subject: 'nas-photo-highlight: 1 new highlight(s)',
+      subject: 'nas-photo-highlight: 新規ハイライト 1 件',
       text: expect.stringContaining('2026-03-21'),
     })
   })
