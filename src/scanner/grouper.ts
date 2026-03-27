@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from 'fs'
+import { readFileSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 import exifr from 'exifr'
 import { config } from '../config.js'
@@ -9,6 +9,13 @@ const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.heic', '.webp'])
 
 function isImage(file: string): boolean {
   return IMAGE_EXTS.has(path.extname(file).toLowerCase())
+}
+
+export function readInputList(inputListPath: string): string[] {
+  return readFileSync(inputListPath, 'utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 }
 
 /** Recursively collect all image paths under a directory */
@@ -38,30 +45,45 @@ async function getDateKey(imagePath: string): Promise<string> {
   return mtime.toISOString().slice(0, 10)
 }
 
-/**
- * Group images under NAS_PHOTO_PATH by date (YYYY-MM-DD) or by subfolder.
- * Returns a Map of groupKey → [imagePaths]
- */
-export async function groupImages(): Promise<ImageGroup> {
-  const allImages = collectImages(config.nas.photoPath)
-  console.log(`Found ${allImages.length} images in ${config.nas.photoPath}`)
-
+export async function groupListedImages(
+  imagePaths: string[],
+  groupBy: 'date' | 'folder',
+  getDateKeyFn: (imagePath: string) => Promise<string> = getDateKey
+): Promise<ImageGroup> {
   const groups: ImageGroup = new Map()
 
-  if (config.processing.groupBy === 'folder') {
-    for (const p of allImages) {
+  if (groupBy === 'folder') {
+    for (const p of imagePaths) {
       const key = path.basename(path.dirname(p))
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(p)
     }
-  } else {
-    // Group by date (default)
-    for (const p of allImages) {
-      const key = await getDateKey(p)
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(p)
-    }
+    return groups
+  }
+
+  for (const p of imagePaths) {
+    const key = await getDateKeyFn(p)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(p)
   }
 
   return groups
+}
+
+/**
+ * Group images under NAS_PHOTO_PATH by date (YYYY-MM-DD) or by subfolder.
+ * Returns a Map of groupKey → [imagePaths]
+ */
+export async function groupImages(inputListPath?: string): Promise<ImageGroup> {
+  const allImages = inputListPath
+    ? readInputList(inputListPath)
+    : collectImages(config.nas.photoPath)
+
+  if (inputListPath) {
+    console.log(`Found ${allImages.length} images in input list ${inputListPath}`)
+  } else {
+    console.log(`Found ${allImages.length} images in ${config.nas.photoPath}`)
+  }
+
+  return groupListedImages(allImages, config.processing.groupBy)
 }

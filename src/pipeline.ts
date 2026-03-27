@@ -24,11 +24,17 @@ function exportManifest() {
   console.log(`📄 Manifest written: ${dest}`)
 }
 
-export async function runPipeline({ force = false } = {}): Promise<PipelineRunSummary> {
+export async function runPipeline({
+  force = false,
+  inputListPath,
+}: {
+  force?: boolean
+  inputListPath?: string
+} = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning photos...')
   prepareOutputPath(config.nas.outputPath)
 
-  const groups = await groupImages()
+  const groups = await groupImages(inputListPath)
   console.log(`📁 Found ${groups.size} groups`)
 
   let generated = 0

@@ -1,6 +1,6 @@
-# 📸 synology-photo-highlight
+# 📸 nas-photo-highlight
 
-Synology NAS 上の写真からハイライト動画を自動生成します。  
+NAS 上の写真からハイライト動画を自動生成します。  
 ローカルの Mac / PC 上で動作し、SMB マウント経由で NAS の写真を読み込み、生成したハイライト `.mp4` を NAS に書き戻します。  
 生成済みハイライトを一覧表示して再生できる、シンプルな LAN 向け Web UI も含まれています。
 
@@ -21,7 +21,7 @@ Synology NAS 上の写真からハイライト動画を自動生成します。
 
 - [Bun](https://bun.sh) v1.x
 - ローカルに [ffmpeg](https://ffmpeg.org) をインストール済みであること（`brew install ffmpeg`）
-- Synology NAS を SMB 経由でマウントしていること（Finder → サーバへ接続）
+- NAS を SMB 経由でマウントしていること（Finder → サーバへ接続）
 
 ---
 
@@ -29,8 +29,8 @@ Synology NAS 上の写真からハイライト動画を自動生成します。
 
 ```bash
 # 1. クローン
-git clone https://github.com/yyYank/synology-photo-highlight.git
-cd synology-photo-highlight
+git clone https://github.com/yyYank/nas-photo-highlight.git
+cd nas-photo-highlight
 
 # 2. 依存関係をインストール
 bun install
@@ -55,6 +55,9 @@ cp .env.example .env
 ```bash
 # 手動でハイライトを生成
 bun run generate
+
+# 指定した画像一覧だけでハイライトを生成
+bun run generate --input-list /path/to/input-files.txt
 
 # 直近の生成結果を通知
 bun run notify
@@ -103,7 +106,12 @@ src/
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
 | `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
+| `NOTIFY_PROVIDER` | `gmail` | `webhook` または `gmail` |
 | `NOTIFY_WEBHOOK_URL` | _(empty)_ | 直近の生成結果を送る webhook URL |
+| `GMAIL_FROM` | _(empty)_ | Gmail 通知の送信元アドレス表示 |
+| `GMAIL_TO` | _(empty)_ | Gmail 通知の送信先アドレス |
+| `GMAIL_USER` | _(empty)_ | Gmail SMTP 認証に使うアカウント |
+| `GMAIL_APP_PASSWORD` | _(empty)_ | Gmail SMTP 認証に使うアプリパスワード |
 | `PORT` | `8888` | Web UI のポート番号 |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
 

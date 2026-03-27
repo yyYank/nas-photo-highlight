@@ -7,10 +7,19 @@ import { notifyLatestRun, sendNotification } from './notify.js'
 validateConfig()
 
 const args = process.argv.slice(2)
+const inputListIndex = args.indexOf('--input-list')
+const inputListPath = inputListIndex >= 0 ? args[inputListIndex + 1] : undefined
+
+if (inputListIndex >= 0 && !inputListPath) {
+  throw new Error('Usage: bun run generate --input-list /path/to/input-files.txt')
+}
 
 if (args.includes('--run-now')) {
   // One-shot: process immediately and exit
-  await runPipeline({ force: args.includes('--force') })
+  await runPipeline({
+    force: args.includes('--force'),
+    inputListPath,
+  })
   process.exit(0)
 } else if (args.includes('--notify')) {
   await notifyLatestRun(config.nas.outputPath)

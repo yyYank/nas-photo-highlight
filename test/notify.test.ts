@@ -19,7 +19,7 @@ afterEach(() => {
 })
 
 function makeDir() {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'synology-photo-highlight-'))
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'nas-photo-highlight-'))
   tempDirs.push(dir)
   return dir
 }
@@ -83,5 +83,39 @@ describe('notify', () => {
     expect(send.mock.calls[0]?.[0]).toBe('https://example.com/webhook')
     expect(send.mock.calls[0]?.[1]?.method).toBe('POST')
     expect(String(send.mock.calls[0]?.[1]?.body)).toContain('2026-03-21')
+  })
+
+  it('gmail provider ならメール送信を使う', async () => {
+    const sendMail = mock(async (_message: {
+      from: string
+      to: string
+      subject: string
+      text: string
+    }) => undefined)
+    const summary = {
+      generated: 1,
+      finishedAt: '2026-03-26T12:34:56.000Z',
+      outputPath: '/Volumes/highlights',
+      highlights: [
+        { groupKey: '2026-03-21', outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4', imageCount: 12 },
+      ],
+    }
+
+    await sendNotification(summary, {
+      provider: 'gmail',
+      gmail: {
+        from: 'from@example.com',
+        to: 'to@example.com',
+      },
+      sendMail,
+    })
+
+    expect(sendMail).toHaveBeenCalledTimes(1)
+    expect(sendMail.mock.calls[0]?.[0]).toEqual({
+      from: 'from@example.com',
+      to: 'to@example.com',
+      subject: 'nas-photo-highlight: 1 new highlight(s)',
+      text: expect.stringContaining('2026-03-21'),
+    })
   })
 })

@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 function makeOutputDir() {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'synology-photo-highlight-'))
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'nas-photo-highlight-'))
   tempDirs.push(dir)
   return dir
 }

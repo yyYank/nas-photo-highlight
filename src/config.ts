@@ -11,7 +11,14 @@ export const config = {
   },
   bgmPath: process.env.BGM_PATH ?? '',
   notification: {
+    provider: (process.env.NOTIFY_PROVIDER ?? 'webhook') as 'webhook' | 'gmail',
     webhookUrl: process.env.NOTIFY_WEBHOOK_URL ?? '',
+    gmail: {
+      from: process.env.GMAIL_FROM ?? '',
+      to: process.env.GMAIL_TO ?? '',
+      user: process.env.GMAIL_USER ?? '',
+      appPassword: process.env.GMAIL_APP_PASSWORD ?? '',
+    },
   },
   port: Number(process.env.PORT ?? 8888),
   cronSchedule: process.env.CRON_SCHEDULE ?? '0 2 * * *',

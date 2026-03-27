@@ -31,7 +31,7 @@ export function loadLastRunSummary(outputPath: string): PipelineRunSummary {
 
 export function buildNotificationMessage(summary: PipelineRunSummary): string {
   const lines = [
-    `synology-photo-highlight: ${summary.generated} new highlight(s)`,
+    `nas-photo-highlight: ${summary.generated} new highlight(s)`,
     `finished_at: ${summary.finishedAt}`,
     `output_path: ${summary.outputPath}`,
   ]
@@ -48,16 +48,72 @@ export function buildNotificationMessage(summary: PipelineRunSummary): string {
   return lines.join('\n')
 }
 
+export function buildNotificationSubject(summary: PipelineRunSummary): string {
+  return `nas-photo-highlight: ${summary.generated} new highlight(s)`
+}
+
+interface SendMailMessage {
+  from: string
+  to: string
+  subject: string
+  text: string
+}
+
+async function createGmailSender() {
+  const nodemailer = await import('nodemailer')
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: config.notification.gmail.user,
+      pass: config.notification.gmail.appPassword,
+    },
+  })
+
+  return async (message: SendMailMessage) => {
+    await transporter.sendMail(message)
+  }
+}
+
 export async function sendNotification(
   summary: PipelineRunSummary,
   {
+    provider = config.notification.provider,
     webhookUrl = config.notification.webhookUrl,
+    gmail = config.notification.gmail,
     send = fetch,
+    sendMail,
   }: {
+    provider?: 'webhook' | 'gmail'
     webhookUrl?: string
+    gmail?: {
+      from: string
+      to: string
+      user?: string
+      appPassword?: string
+    }
     send?: typeof fetch
+    sendMail?: (message: SendMailMessage) => Promise<void>
   } = {}
 ) {
+  if (provider === 'gmail') {
+    if (!gmail.from || !gmail.to) {
+      throw new Error('GMAIL_FROM or GMAIL_TO is not set in .env')
+    }
+
+    if (!sendMail && (!gmail.user || !gmail.appPassword)) {
+      throw new Error('GMAIL_FROM, GMAIL_TO, GMAIL_USER, or GMAIL_APP_PASSWORD is not set in .env')
+    }
+
+    const gmailSender = sendMail ?? (await createGmailSender())
+    await gmailSender({
+      from: gmail.from,
+      to: gmail.to,
+      subject: buildNotificationSubject(summary),
+      text: buildNotificationMessage(summary),
+    })
+    return
+  }
+
   if (!webhookUrl) {
     throw new Error('NOTIFY_WEBHOOK_URL is not set in .env')
   }
