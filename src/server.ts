@@ -1,9 +1,11 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 import { config } from './config.js'
+import { resolveOutputPath } from './outputPath.js'
 
 interface StaticHandlerOptions {
-  outputPath: string
+  metaOutputPath: string
+  mediaOutputPath: string
   uiHtml: string
 }
 
@@ -19,7 +21,7 @@ function resolveAssetPath(outputPath: string, pathname: string): string | null {
   return absolutePath
 }
 
-export function createStaticHandler({ outputPath, uiHtml }: StaticHandlerOptions) {
+export function createStaticHandler({ metaOutputPath, mediaOutputPath, uiHtml }: StaticHandlerOptions) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
 
@@ -29,7 +31,8 @@ export function createStaticHandler({ outputPath, uiHtml }: StaticHandlerOptions
       })
     }
 
-    const assetPath = resolveAssetPath(outputPath, decodeURIComponent(url.pathname))
+    const basePath = url.pathname === '/highlights.json' ? metaOutputPath : mediaOutputPath
+    const assetPath = resolveAssetPath(basePath, decodeURIComponent(url.pathname))
     if (!assetPath || !existsSync(assetPath)) {
       return new Response('Not Found', { status: 404 })
     }
@@ -42,7 +45,8 @@ export function startWebServer() {
   const uiPath = path.join(import.meta.dir, 'web', 'index.html')
   const uiHtml = readFileSync(uiPath, 'utf8')
   const handler = createStaticHandler({
-    outputPath: config.nas.outputPath,
+    metaOutputPath: resolveOutputPath(config.nas.metaOutputPath),
+    mediaOutputPath: resolveOutputPath(config.nas.outputPath),
     uiHtml,
   })
 

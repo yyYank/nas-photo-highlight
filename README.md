@@ -100,7 +100,8 @@ src/
 | Key | Default | 説明 |
 |---|---|---|
 | `NAS_PHOTO_PATH` | — | マウント済み NAS 上の写真ディレクトリ |
-| `NAS_OUTPUT_PATH` | — | ハイライト `.mp4` の出力先パス |
+| `NAS_META_OUTPUT_PATH` | `NAS_OUTPUT_PATH` | `index.html` / `highlights.json` / `last-run.json` の出力先パス |
+| `NAS_OUTPUT_PATH` | — | ハイライト `.mp4` の出力先パス。`{yyyy}` / `{mm}` を利用可能 |
 | `GROUP_BY` | `date` | `date` または `folder` |
 | `IMAGES_PER_HIGHLIGHT` | `25` | 1 ハイライトあたりの最大ベストショット数 |
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |

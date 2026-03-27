@@ -5,7 +5,7 @@ import { pickBestShots } from './scorer/imageScore.js'
 import { generateHighlight } from './generator/highlight.js'
 import { highlightDb } from './db/index.js'
 import { config } from './config.js'
-import { prepareOutputPath } from './outputPath.js'
+import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from './outputPath.js'
 import { saveLastRunSummary, type PipelineRunSummary } from './notify.js'
 
 /**
@@ -13,15 +13,31 @@ import { saveLastRunSummary, type PipelineRunSummary } from './notify.js'
  * This is what Nginx (on the NAS) serves as the "API".
  */
 function exportManifest() {
+  const metaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
   const highlights = highlightDb.list().map((h) => ({
     group_key: h.group_key,
     filename: path.basename(h.output_path),
     image_count: h.image_count,
     created_at: h.created_at,
   }))
-  const dest = path.join(config.nas.outputPath, 'highlights.json')
+  const dest = path.join(metaOutputPath, 'highlights.json')
   writeFileSync(dest, JSON.stringify(highlights, null, 2), 'utf8')
   console.log(`📄 Manifest written: ${dest}`)
+}
+
+export function shouldSkipHighlightGeneration({
+  force,
+  existingOutputPath,
+  targetOutputPath,
+}: {
+  force: boolean
+  existingOutputPath?: string
+  targetOutputPath: string
+}) {
+  if (force) return false
+  if (!existingOutputPath) return false
+
+  return existingOutputPath === targetOutputPath
 }
 
 export async function runPipeline({
@@ -32,7 +48,10 @@ export async function runPipeline({
   inputListPath?: string
 } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning photos...')
-  prepareOutputPath(config.nas.outputPath)
+  const resolvedMetaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
+  const resolvedOutputPath = resolveOutputPath(config.nas.outputPath)
+  prepareMetaOutputPath(resolvedMetaOutputPath)
+  prepareOutputPath(resolvedOutputPath)
 
   const groups = await groupImages(inputListPath)
   console.log(`📁 Found ${groups.size} groups`)
@@ -46,7 +65,14 @@ export async function runPipeline({
       continue
     }
 
-    if (!force && highlightDb.exists(key)) {
+    const outputPath = path.join(resolvedOutputPath, `${key}_highlight.mp4`)
+    const existingHighlight = highlightDb.find(key)
+
+    if (shouldSkipHighlightGeneration({
+      force,
+      existingOutputPath: existingHighlight?.output_path,
+      targetOutputPath: outputPath,
+    })) {
       console.log(`⏭  Skipping ${key} (already generated)`)
       continue
     }
@@ -56,7 +82,6 @@ export async function runPipeline({
     const best = await pickBestShots(images, config.processing.imagesPerHighlight)
     console.log(`  Selected ${best.length} best shots`)
 
-    const outputPath = path.join(config.nas.outputPath, `${key}_highlight.mp4`)
     await generateHighlight(best, outputPath)
 
     highlightDb.upsert(key, outputPath, best.length)
@@ -74,10 +99,10 @@ export async function runPipeline({
   const summary = {
     generated,
     finishedAt: new Date().toISOString(),
-    outputPath: config.nas.outputPath,
+    outputPath: resolvedOutputPath,
     highlights,
   }
-  saveLastRunSummary(config.nas.outputPath, summary)
+  saveLastRunSummary(resolvedMetaOutputPath, summary)
 
   console.log(`\n✅ Pipeline complete — ${generated} new highlight(s) generated`)
   return summary

@@ -3,6 +3,7 @@ import { validateConfig, config } from './config.js'
 import { runPipeline } from './pipeline.js'
 import { startWebServer } from './server.js'
 import { notifyLatestRun, sendNotification } from './notify.js'
+import { resolveOutputPath } from './outputPath.js'
 
 validateConfig()
 
@@ -22,7 +23,7 @@ if (args.includes('--run-now')) {
   })
   process.exit(0)
 } else if (args.includes('--notify')) {
-  await notifyLatestRun(config.nas.outputPath)
+  await notifyLatestRun(resolveOutputPath(config.nas.metaOutputPath))
   console.log('🔔 Notification sent')
   process.exit(0)
 } else {

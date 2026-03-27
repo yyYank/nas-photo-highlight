@@ -1,6 +1,7 @@
 export const config = {
   nas: {
     photoPath: process.env.NAS_PHOTO_PATH ?? '',
+    metaOutputPath: process.env.NAS_META_OUTPUT_PATH ?? process.env.NAS_OUTPUT_PATH ?? '',
     outputPath: process.env.NAS_OUTPUT_PATH ?? '',
   },
   processing: {
@@ -26,5 +27,6 @@ export const config = {
 
 export function validateConfig() {
   if (!config.nas.photoPath) throw new Error('NAS_PHOTO_PATH is not set in .env')
+  if (!config.nas.metaOutputPath) throw new Error('NAS_META_OUTPUT_PATH is not set in .env')
   if (!config.nas.outputPath) throw new Error('NAS_OUTPUT_PATH is not set in .env')
 }

@@ -20,9 +20,11 @@ function makeOutputDir() {
 
 describe('createStaticHandler', () => {
   it('ルートパスで Web UI を返す', async () => {
-    const outputDir = makeOutputDir()
+    const metaOutputDir = makeOutputDir()
+    const mediaOutputDir = makeOutputDir()
     const handler = createStaticHandler({
-      outputPath: outputDir,
+      metaOutputPath: metaOutputDir,
+      mediaOutputPath: mediaOutputDir,
       uiHtml: '<!DOCTYPE html><title>ui</title>',
     })
 
@@ -34,10 +36,12 @@ describe('createStaticHandler', () => {
   })
 
   it('生成済み manifest を返す', async () => {
-    const outputDir = makeOutputDir()
-    writeFileSync(path.join(outputDir, 'highlights.json'), '[]', 'utf8')
+    const metaOutputDir = makeOutputDir()
+    const mediaOutputDir = makeOutputDir()
+    writeFileSync(path.join(metaOutputDir, 'highlights.json'), '[]', 'utf8')
     const handler = createStaticHandler({
-      outputPath: outputDir,
+      metaOutputPath: metaOutputDir,
+      mediaOutputPath: mediaOutputDir,
       uiHtml: '<!DOCTYPE html><title>ui</title>',
     })
 
@@ -49,11 +53,13 @@ describe('createStaticHandler', () => {
   })
 
   it('動画ファイルを返す', async () => {
-    const outputDir = makeOutputDir()
+    const metaOutputDir = makeOutputDir()
+    const mediaOutputDir = makeOutputDir()
     const body = 'fake-mp4'
-    writeFileSync(path.join(outputDir, 'demo.mp4'), body, 'utf8')
+    writeFileSync(path.join(mediaOutputDir, 'demo.mp4'), body, 'utf8')
     const handler = createStaticHandler({
-      outputPath: outputDir,
+      metaOutputPath: metaOutputDir,
+      mediaOutputPath: mediaOutputDir,
       uiHtml: '<!DOCTYPE html><title>ui</title>',
     })
 

@@ -26,22 +26,30 @@ function makeDir() {
 
 describe('notify', () => {
   it('直近の実行結果を保存して読み出せる', () => {
-    const outputDir = makeDir()
+    const metaOutputDir = makeDir()
     const summary = {
       generated: 2,
       finishedAt: '2026-03-26T12:34:56.000Z',
-      outputPath: '/Volumes/highlights',
+      outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03',
       highlights: [
-        { groupKey: '2026-03-20', outputPath: '/Volumes/highlights/2026-03-20_highlight.mp4', imageCount: 10 },
-        { groupKey: '2026-03-21', outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4', imageCount: 12 },
+        {
+          groupKey: '2026-03-20',
+          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-20_highlight.mp4',
+          imageCount: 10,
+        },
+        {
+          groupKey: '2026-03-21',
+          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+          imageCount: 12,
+        },
       ],
     }
 
-    saveLastRunSummary(outputDir, summary)
+    saveLastRunSummary(metaOutputDir, summary)
 
-    const file = readFileSync(path.join(outputDir, 'last-run.json'), 'utf8')
+    const file = readFileSync(path.join(metaOutputDir, 'last-run.json'), 'utf8')
     expect(file).toContain('"generated": 2')
-    expect(loadLastRunSummary(outputDir)).toEqual(summary)
+    expect(loadLastRunSummary(metaOutputDir)).toEqual(summary)
   })
 
   it('通知文に生成結果をまとめる', () => {
@@ -75,6 +83,7 @@ describe('notify', () => {
     }
 
     await sendNotification(summary, {
+      provider: 'webhook',
       webhookUrl: 'https://example.com/webhook',
       send,
     })

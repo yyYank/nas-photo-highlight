@@ -45,6 +45,11 @@ export const highlightDb = {
     return !!row
   },
 
+  find(groupKey: string): HighlightRecord | null {
+    const row = db.query('SELECT * FROM highlights WHERE group_key = ?').get(groupKey)
+    return (row as HighlightRecord | null) ?? null
+  },
+
   list(): HighlightRecord[] {
     return db.query('SELECT * FROM highlights ORDER BY group_key DESC').all() as HighlightRecord[]
   },
