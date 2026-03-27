@@ -8,6 +8,8 @@
     "generate:force": "bun src/index.ts --run-now --force",
     "notify": "bun src/index.ts --notify",
     "schedule": "bun src/index.ts",
+    "deploy:nas": "bun src/deploy.ts",
+    "deploy:nas:dry-run": "bun src/deploy.ts --dry-run",
     "dev": "bun --watch src/index.ts",
     "score": "bun src/scorer/imageScore.ts",
     "build": "bun build src/index.ts --outdir dist",

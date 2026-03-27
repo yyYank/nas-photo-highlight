@@ -65,6 +65,10 @@ bun run notify
 # 定期実行して Web UI を公開
 bun run schedule
 
+# NAS の nginx 設定を生成してデプロイ
+bun run deploy:nas:dry-run
+bun run deploy:nas
+
 # 既存ハイライトを強制再生成
 bun run generate:force
 ```
@@ -108,13 +112,30 @@ src/
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
 | `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
 | `NOTIFY_PROVIDER` | `gmail` | `webhook` または `gmail` |
+| `BASE_URL` | _(empty)_ | 通知文に含めるハイライト動画のベース URL |
 | `NOTIFY_WEBHOOK_URL` | _(empty)_ | 直近の生成結果を送る webhook URL |
 | `GMAIL_FROM` | _(empty)_ | Gmail 通知の送信元アドレス表示 |
 | `GMAIL_TO` | _(empty)_ | Gmail 通知の送信先アドレス |
 | `GMAIL_USER` | _(empty)_ | Gmail SMTP 認証に使うアカウント |
 | `GMAIL_APP_PASSWORD` | _(empty)_ | Gmail SMTP 認証に使うアプリパスワード |
 | `PORT` | `8888` | Web UI のポート番号 |
+| `NAS_DEPLOY_HOST` | _(empty)_ | NAS へ `ssh` / `scp` する接続先 |
+| `NAS_DEPLOY_DIR` | _(empty)_ | NAS 上で `docker-compose.yml` と `nginx.conf` を配置するディレクトリ |
+| `NAS_DEPLOY_META_PATH` | _(empty)_ | NAS 上で `index.html` / `highlights.json` / `last-run.json` を読む bind mount 元 |
+| `NAS_DEPLOY_MEDIA_PATH` | _(empty)_ | NAS 上で `PhotoLibrary` を読む bind mount 元。`{yyyy}` / `{mm}` を含む場合は配信ルートへ正規化 |
+| `NAS_DEPLOY_PORT` | `8888` | NAS 上で公開する HTTP ポート |
+| `NAS_DEPLOY_DOCKER_BIN` | `docker` | 非対話 `ssh` で使う Docker CLI パス。Synology では `/usr/local/bin/docker` のことがある |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
+
+## NAS Web Deploy
+
+`bun run deploy:nas` はローカル `.env` を参照して `nas/generated/docker-compose.yml` と `nas/generated/nginx.conf` を生成し、その後 NAS へ `scp` して `docker compose up -d` を実行します。
+
+注意:
+
+- `NAS_PHOTO_PATH` / `NAS_META_OUTPUT_PATH` / `NAS_OUTPUT_PATH` はローカル Mac の SMB マウントパスです
+- Docker bind mount には使えないので、NAS 側の実パスは `NAS_DEPLOY_META_PATH` / `NAS_DEPLOY_MEDIA_PATH` で別に指定します
+- まず `bun run deploy:nas:dry-run` で実行予定コマンドを確認してください
 
 ---
 

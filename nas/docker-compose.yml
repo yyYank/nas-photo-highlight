@@ -5,7 +5,8 @@ services:
     ports:
       - "8888:80"
     volumes:
-      # NASのhighlightsフォルダをNginxのドキュメントルートにマウント
-      # SynologyのパスはDSMのFile Stationで確認（通常 /volume1/xxxx）
-      - /volume1/highlights:/usr/share/nginx/html:ro
+      # メタ出力先: index.html / highlights.json / last-run.json
+      - /volume1/highlights:/usr/share/nginx/meta:ro
+      # 動画出力先: PhotoLibrary/{yyyy}/{mm}/*.mp4
+      - /volume1/Photos/PhotoLibrary:/usr/share/nginx/media:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

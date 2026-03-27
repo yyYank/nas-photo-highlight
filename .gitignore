@@ -11,4 +11,5 @@ dist/
 *.db-shm
 *.db-wal
 /tmp/
+nas/generated/
 .DS_Store

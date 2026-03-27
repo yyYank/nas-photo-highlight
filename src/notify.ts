@@ -29,7 +29,18 @@ export function loadLastRunSummary(outputPath: string): PipelineRunSummary {
   return JSON.parse(readFileSync(getLastRunPath(outputPath), 'utf8')) as PipelineRunSummary
 }
 
-export function buildNotificationMessage(summary: PipelineRunSummary): string {
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, '')
+}
+
+function buildHighlightMediaRelativePath(outputPath: string): string {
+  return outputPath.split('/').slice(-3).join('/')
+}
+
+export function buildNotificationMessage(
+  summary: PipelineRunSummary,
+  { baseUrl = config.notification.baseUrl }: { baseUrl?: string } = {}
+): string {
   const lines = [
     `nas-photo-highlight: ${summary.generated} new highlight(s)`,
     `finished_at: ${summary.finishedAt}`,
@@ -40,6 +51,14 @@ export function buildNotificationMessage(summary: PipelineRunSummary): string {
     lines.push('highlights:')
     for (const highlight of summary.highlights) {
       lines.push(`- ${highlight.groupKey} (${highlight.imageCount} photos)`)
+    }
+
+    if (baseUrl) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+      lines.push('links:')
+      for (const highlight of summary.highlights) {
+        lines.push(`- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`)
+      }
     }
   } else {
     lines.push('highlights: none')
@@ -78,12 +97,14 @@ export async function sendNotification(
   summary: PipelineRunSummary,
   {
     provider = config.notification.provider,
+    baseUrl = config.notification.baseUrl,
     webhookUrl = config.notification.webhookUrl,
     gmail = config.notification.gmail,
     send = fetch,
     sendMail,
   }: {
     provider?: 'webhook' | 'gmail'
+    baseUrl?: string
     webhookUrl?: string
     gmail?: {
       from: string
@@ -109,7 +130,7 @@ export async function sendNotification(
       from: gmail.from,
       to: gmail.to,
       subject: buildNotificationSubject(summary),
-      text: buildNotificationMessage(summary),
+      text: buildNotificationMessage(summary, { baseUrl }),
     })
     return
   }
@@ -121,7 +142,7 @@ export async function sendNotification(
   const response = await send(webhookUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text: buildNotificationMessage(summary) }),
+    body: JSON.stringify({ text: buildNotificationMessage(summary, { baseUrl }) }),
   })
 
   if (!response.ok) {

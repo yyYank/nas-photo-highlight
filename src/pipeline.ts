@@ -7,22 +7,33 @@ import { highlightDb } from './db/index.js'
 import { config } from './config.js'
 import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from './outputPath.js'
 import { saveLastRunSummary, type PipelineRunSummary } from './notify.js'
+import type { HighlightRecord } from './db/index.js'
 
 /**
  * Write highlights.json to NAS output folder.
  * This is what Nginx (on the NAS) serves as the "API".
  */
+export function buildManifestHighlight(highlight: HighlightRecord, mediaRootPath: string) {
+  return {
+    group_key: highlight.group_key,
+    filename: path.basename(highlight.output_path),
+    relative_path: path.relative(mediaRootPath, highlight.output_path).split(path.sep).join('/'),
+    image_count: highlight.image_count,
+    created_at: highlight.created_at,
+  }
+}
+
 function exportManifest() {
   const metaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
-  const highlights = highlightDb.list().map((h) => ({
-    group_key: h.group_key,
-    filename: path.basename(h.output_path),
-    image_count: h.image_count,
-    created_at: h.created_at,
-  }))
+  const mediaRootPath = normalizeMediaRootPath(config.nas.outputPath)
+  const highlights = highlightDb.list().map((h) => buildManifestHighlight(h, mediaRootPath))
   const dest = path.join(metaOutputPath, 'highlights.json')
   writeFileSync(dest, JSON.stringify(highlights, null, 2), 'utf8')
   console.log(`📄 Manifest written: ${dest}`)
+}
+
+function normalizeMediaRootPath(outputPathTemplate: string) {
+  return outputPathTemplate.replace(/\/\{yyyy\}(?:\/\{mm\})?(?:\/.*)?$/, '')
 }
 
 export function shouldSkipHighlightGeneration({

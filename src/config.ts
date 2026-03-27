@@ -13,6 +13,7 @@ export const config = {
   bgmPath: process.env.BGM_PATH ?? '',
   notification: {
     provider: (process.env.NOTIFY_PROVIDER ?? 'webhook') as 'webhook' | 'gmail',
+    baseUrl: process.env.BASE_URL ?? '',
     webhookUrl: process.env.NOTIFY_WEBHOOK_URL ?? '',
     gmail: {
       from: process.env.GMAIL_FROM ?? '',

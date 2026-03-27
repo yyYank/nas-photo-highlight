@@ -69,6 +69,27 @@ describe('notify', () => {
     expect(message).toContain('/Volumes/highlights')
   })
 
+  it('BASE_URL があると各ハイライトの URL を通知文に含める', () => {
+    const message = buildNotificationMessage(
+      {
+        generated: 1,
+        finishedAt: '2026-03-26T12:34:56.000Z',
+        outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03',
+        highlights: [
+          {
+            groupKey: '2026-03-21',
+            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            imageCount: 12,
+          },
+        ],
+      },
+      { baseUrl: 'http://192.168.1.10:8888' }
+    )
+
+    expect(message).toContain('links:')
+    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
+  })
+
   it('webhook へ直近結果を送る', async () => {
     const send = mock(async (_url: string, init?: RequestInit) =>
       new Response(null, { status: 200 })
@@ -126,5 +147,38 @@ describe('notify', () => {
       subject: 'nas-photo-highlight: 1 new highlight(s)',
       text: expect.stringContaining('2026-03-21'),
     })
+  })
+
+  it('gmail provider なら本文にハイライト URL を含める', async () => {
+    const sendMail = mock(async (_message: {
+      from: string
+      to: string
+      subject: string
+      text: string
+    }) => undefined)
+    const summary = {
+      generated: 1,
+      finishedAt: '2026-03-26T12:34:56.000Z',
+      outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03',
+      highlights: [
+        {
+          groupKey: '2026-03-21',
+          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+          imageCount: 12,
+        },
+      ],
+    }
+
+    await sendNotification(summary, {
+      provider: 'gmail',
+      gmail: {
+        from: 'from@example.com',
+        to: 'to@example.com',
+      },
+      baseUrl: 'http://192.168.1.10:8888',
+      sendMail,
+    })
+
+    expect(sendMail.mock.calls[0]?.[0]?.text).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
   })
 })
