@@ -5,6 +5,8 @@ import { rm } from 'fs/promises'
 import { extractVideoFrames } from '../infra/ffmpeg.js'
 import { loadFaceDetectionsFromFile, resolveFaceDetectionsForFrames } from '../infra/mediapipe.js'
 import { scoreVideoFrames } from '../core/scoring.js'
+import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, smoothFrameScores } from '../core/segment.js'
+import type { HighlightCandidate } from '../types/score.js'
 
 const args = process.argv.slice(2)
 const mediaPath = args[0]
@@ -29,8 +31,31 @@ try {
     ? resolveFaceDetectionsForFrames(frames, await loadFaceDetectionsFromFile(faceAnalysisPath))
     : undefined
   const scores = await scoreVideoFrames(frames, { faceDetections })
+  const smoothed = smoothFrameScores(scores)
+  const peaks = mergeNearbyPeaks(detectPeakFrames(smoothed))
+  const segments = buildSegmentsFromPeaks(smoothed, peaks)
+
+  const candidate: HighlightCandidate = {
+    mediaId: path.basename(mediaPath),
+    segments: segments.map((segment) => {
+      const peakFrame = segment.frames.reduce((best, frame) => frame.total > best.total ? frame : best, segment.frames[0]!)
+      return {
+        start: segment.start,
+        end: segment.end,
+        peakTime: segment.peakTime,
+        score: segment.score,
+        reason: {
+          expression: peakFrame.expression,
+          change: peakFrame.change,
+          focus: peakFrame.focus,
+          bonus: peakFrame.bonus,
+        },
+      }
+    }),
+  }
 
   console.log(JSON.stringify({
+    candidate,
     faceAnalysisPath,
     fps,
     frameCount: scores.length,
