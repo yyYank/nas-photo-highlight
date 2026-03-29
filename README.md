@@ -15,6 +15,7 @@ NAS 上の写真や動画からハイライト動画を自動生成します。
 - **定期実行** — cron ベースで自動実行（デフォルト: 毎日午前 2 時）
 - **既処理データをスキップ** — SQLite で生成済み内容を管理
 - **スコアリング基盤** — `ffmpeg` とローカル処理で動画フレームの focus / change / total を算出
+- **表情スコア導入** — ローカルの顔解析結果を読み込み、expression と bonus を加味したスコアリングに対応
 
 ---
 
@@ -62,6 +63,9 @@ bun run generate --input-list /path/to/input-files.txt
 
 # 動画フレームの初期スコアを JSON で確認
 bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4
+
+# ローカルの顔解析結果 JSON を使って expression / bonus も反映
+bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json
 
 # 直近の生成結果を通知
 bun run notify
