@@ -248,8 +248,6 @@ function buildConcatArgs(
       '0:v:0',
       '-map',
       '[aout]',
-      '-c:v',
-      dryRun ? 'null' : 'copy',
       '-c:a',
       'aac',
       '-ar',
@@ -265,7 +263,7 @@ function buildConcatArgs(
       return args
     }
 
-    args.push('-movflags', '+faststart', outputPath)
+    args.push('-c:v', 'copy', '-movflags', '+faststart', outputPath)
     return args
   }
 
