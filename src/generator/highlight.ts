@@ -1,5 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg'
+import { rm } from 'fs/promises'
 import { config } from '../config'
+import { assertBinaryAvailable } from '../infra/ffmpegBinary'
 
 const HIGHLIGHT_WIDTH = 1080
 const HIGHLIGHT_HEIGHT = 1920
@@ -42,10 +44,12 @@ export function buildHighlightFilterGraph(
  * Generate a highlight movie from image/video segments.
  * Images use Ken Burns; videos are inserted at original duration.
  */
-export function generateHighlight(
+export async function generateHighlight(
   segments: HighlightSegment[],
   outputPath: string
 ): Promise<void> {
+  await assertBinaryAvailable('ffmpeg')
+
   return new Promise((resolve, reject) => {
     let cmd = ffmpeg()
 
@@ -92,8 +96,12 @@ export function generateHighlight(
         console.log(`\n  ✅ saved: ${outputPath}`)
         resolve()
       })
-      .on('error', async (err) => {
-        reject(err)
+      .on('error', (err) => {
+        rm(outputPath, { force: true })
+          .catch(() => undefined)
+          .finally(() => {
+            reject(err)
+          })
       })
       .run()
   })

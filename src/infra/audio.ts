@@ -1,6 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { AudioPeakSample } from '../types/media'
+import { assertBinaryAvailable } from './ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
 
@@ -45,6 +46,7 @@ export function parseAudioPeakLines(stderr: string): AudioPeakSample[] {
 export async function extractAudioPeaks(
   inputPath: string
 ): Promise<AudioPeakSample[]> {
+  await assertBinaryAvailable('ffmpeg')
   const args = buildAudioPeakExtractionArgs(inputPath)
   const { stderr } = await execFileAsync('ffmpeg', args)
   return parseAudioPeakLines(stderr)

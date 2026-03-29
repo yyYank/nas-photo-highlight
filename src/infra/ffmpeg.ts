@@ -3,6 +3,7 @@ import { promisify } from 'util'
 import { readdir } from 'fs/promises'
 import path from 'path'
 import type { ExtractVideoFramesOptions, SampledFrame } from '../types/media'
+import { assertBinaryAvailable } from './ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
 
@@ -39,6 +40,7 @@ export function parseShowinfoLine(line: string) {
 export async function extractVideoFrames(
   options: ExtractVideoFramesOptions
 ): Promise<SampledFrame[]> {
+  await assertBinaryAvailable('ffmpeg')
   const args = buildFrameExtractionArgs(options)
   const { stderr } = await execFileAsync('ffmpeg', args)
   const frameMetadata = stderr
