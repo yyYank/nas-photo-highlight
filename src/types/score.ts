@@ -27,3 +27,19 @@ export interface FrameScore {
   total: number
   meta: FrameScoreMeta
 }
+
+export interface HighlightCandidate {
+  mediaId: string
+  segments: Array<{
+    start: number
+    end: number
+    peakTime: number
+    score: number
+    reason: {
+      expression: number
+      change: number
+      focus: number
+      bonus: number
+    }
+  }>
+}
