@@ -9,6 +9,7 @@ import {
   readFile,
   rm,
   stat,
+  utimes,
   writeFile,
 } from 'fs/promises'
 import path from 'path'
@@ -316,6 +317,21 @@ describe('highlight integration', () => {
         await writeFile(fakeHeicPath, await readFile(imageBPath))
         await writeFile(brokenVideoPath, 'not-an-mp4', 'utf8')
         await writeFile(faceAnalysisPath, '{}', 'utf8')
+        await utimes(
+          imageAPath,
+          new Date('2026-03-01T09:00:00.000Z'),
+          new Date('2026-03-01T09:00:00.000Z')
+        )
+        await utimes(
+          fakeHeicPath,
+          new Date('2026-03-02T09:00:00.000Z'),
+          new Date('2026-03-02T09:00:00.000Z')
+        )
+        await utimes(
+          audioVideoPath,
+          new Date('2026-03-03T09:00:00.000Z'),
+          new Date('2026-03-03T09:00:00.000Z')
+        )
 
         const mixedOutputPath = path.join(workDir, 'highlight-mixed.mp4')
         const silentOutputPath = path.join(workDir, 'highlight-silent.mp4')
@@ -406,8 +422,15 @@ describe('highlight integration', () => {
 
         const commonEnv = {
           ...process.env,
+          NAS_META_OUTPUT_PATH: metaDir,
+          NAS_OUTPUT_PATH: outputDir,
+          NAS_PHOTO_PATH: workDir,
           FFMPEG_BIN: mediaEnv.ffmpegBin,
           FFPROBE_BIN: mediaEnv.ffprobeBin,
+          GROUP_BY: 'date',
+          IMAGES_PER_HIGHLIGHT: String(processingConfig.imagesPerHighlight),
+          MIN_IMAGES_TO_GENERATE: String(processingConfig.minImagesToGenerate),
+          SECONDS_PER_IMAGE: String(processingConfig.secondsPerImage),
           NODE_ENV: 'test',
           TMPDIR: workDir,
         }
@@ -489,6 +512,23 @@ describe('highlight integration', () => {
           inputListPath,
         })
         expect(pipelineSummary.generated).toBe(0)
+
+        const cliGenerate = await runBunScript(
+          [
+            'src/index.ts',
+            '--run-now',
+            '--dry-run',
+            '--from',
+            '2026-03-02',
+            '--to',
+            '2026-03-02',
+          ],
+          commonEnv
+        )
+        expect(cliGenerate.stdout).toContain('Media (1):')
+        expect(cliGenerate.stdout).toContain(fakeHeicPath)
+        expect(cliGenerate.stdout).not.toContain(imageAPath)
+        expect(cliGenerate.stdout).not.toContain(audioVideoPath)
 
         const generatedFiles = await readdir(outputDir)
         expect(generatedFiles.some((file) => file.endsWith('.mp4'))).toBe(false)

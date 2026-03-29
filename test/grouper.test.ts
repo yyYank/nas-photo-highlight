@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import {
+  filterMediaByDateRange,
   groupListedMedia,
   groupListedImages,
   isImagePath,
@@ -113,6 +114,30 @@ describe('groupListedImages', () => {
       '/Volumes/photo/trip/a.jpg',
       '/Volumes/photo/trip/c.mov',
       '/Volumes/photo/trip/b.jpg',
+    ])
+  })
+
+  it('日付レンジでメディアを絞り込める', async () => {
+    const result = await filterMediaByDateRange(
+      [
+        '/Volumes/photo/trip/a.jpg',
+        '/Volumes/photo/trip/b.jpg',
+        '/Volumes/photo/trip/c.mov',
+      ],
+      {
+        dateFrom: '2026-03-02',
+        dateTo: '2026-03-03',
+      },
+      async (mediaPath) => {
+        if (mediaPath.endsWith('a.jpg')) return '2026-03-01'
+        if (mediaPath.endsWith('b.jpg')) return '2026-03-02'
+        return '2026-03-03'
+      }
+    )
+
+    expect(result).toEqual([
+      '/Volumes/photo/trip/b.jpg',
+      '/Volumes/photo/trip/c.mov',
     ])
   })
 })

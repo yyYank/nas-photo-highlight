@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   buildHighlightSegments,
   buildManifestHighlight,
+  normalizeDateRange,
   shouldSkipHighlightGeneration,
 } from '../src/pipeline'
 
@@ -89,5 +90,23 @@ describe('buildHighlightSegments', () => {
       { path: '/Volumes/home/Photos/2026/03/c.jpg', type: 'image' },
       { path: '/Volumes/home/Photos/2026/03/d.mp4', type: 'video' },
     ])
+  })
+})
+
+describe('normalizeDateRange', () => {
+  it('from/to があれば date range オブジェクトを返す', () => {
+    expect(
+      normalizeDateRange({
+        dateFrom: '2026-03-01',
+        dateTo: '2026-03-07',
+      })
+    ).toEqual({
+      dateFrom: '2026-03-01',
+      dateTo: '2026-03-07',
+    })
+  })
+
+  it('どちらも無ければ undefined を返す', () => {
+    expect(normalizeDateRange({})).toBeUndefined()
   })
 })
