@@ -6,6 +6,7 @@ import {
   buildHighlightCommandPreviews,
   generateHighlight,
   type HighlightCommandPreview,
+  runHighlightDryRun,
   type HighlightSegment,
 } from './generator/highlight'
 import { highlightDb } from './db/index'
@@ -126,6 +127,8 @@ function printDryRunGroup(group: DryRunHighlightGroup) {
 
   if (group.skipped) {
     console.log('  Result: skipped by existing output')
+  } else {
+    console.log('  Result: ffmpeg verification passed')
   }
 }
 
@@ -194,12 +197,17 @@ export async function runPipeline({
     )
 
     if (dryRun) {
-      const ffmpegCommands = await buildHighlightCommandPreviews(
+      const previewCommands = await buildHighlightCommandPreviews(
+        segments,
+        outputPath
+      )
+      const { commands: ffmpegCommands } = await runHighlightDryRun(
         segments,
         outputPath
       )
       printDryRunGroup({
-        ffmpegCommands,
+        ffmpegCommands:
+          ffmpegCommands.length > 0 ? ffmpegCommands : previewCommands,
         groupKey: key,
         imagePaths: bestImages,
         mediaPaths,

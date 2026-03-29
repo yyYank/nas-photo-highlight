@@ -1,8 +1,11 @@
-import ffmpeg from 'fluent-ffmpeg'
+import { execFile } from 'child_process'
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import os from 'os'
 import path from 'path'
+import { promisify } from 'util'
 import { config } from '../config'
+
+const execFileAsync = promisify(execFile)
 
 const HIGHLIGHT_WIDTH = 1080
 const HIGHLIGHT_HEIGHT = 1920
@@ -19,6 +22,10 @@ export interface HighlightCommandPreview {
   outputPath: string
   command: string
   kind: 'segment' | 'concat'
+}
+
+export interface HighlightDryRunResult {
+  commands: HighlightCommandPreview[]
 }
 
 export function buildImageSegmentFilters(secondsPerImage: number): string[] {
@@ -55,13 +62,19 @@ export function buildImageSegmentOutputOptions(
   secondsPerImage: number
 ): string[] {
   return [
-    '-map 0:v:0',
-    '-map 1:a:0',
+    '-map',
+    '0:v:0',
+    '-map',
+    '1:a:0',
     '-shortest',
-    `-t ${secondsPerImage}`,
-    '-pix_fmt yuv420p',
-    '-movflags +faststart',
-    `-r ${HIGHLIGHT_FPS}`,
+    '-t',
+    `${secondsPerImage}`,
+    '-pix_fmt',
+    'yuv420p',
+    '-movflags',
+    '+faststart',
+    '-r',
+    `${HIGHLIGHT_FPS}`,
   ]
 }
 
@@ -69,151 +82,209 @@ export function buildVideoSegmentOutputOptions(
   hasSourceAudio: boolean
 ): string[] {
   return [
-    '-map 0:v:0',
-    hasSourceAudio ? '-map 0:a:0' : '-map 1:a:0',
+    '-map',
+    '0:v:0',
+    '-map',
+    hasSourceAudio ? '0:a:0' : '1:a:0',
     '-shortest',
-    '-pix_fmt yuv420p',
-    '-movflags +faststart',
-    `-r ${HIGHLIGHT_FPS}`,
+    '-pix_fmt',
+    'yuv420p',
+    '-movflags',
+    '+faststart',
+    '-r',
+    `${HIGHLIGHT_FPS}`,
   ]
 }
 
 export function buildFinalHighlightOutputOptions(): string[] {
   return [
-    '-map 0:v:0',
-    '-map 0:a:0',
-    `-t ${MAX_HIGHLIGHT_SECONDS}`,
-    '-movflags +faststart',
+    '-map',
+    '0:v:0',
+    '-map',
+    '0:a:0',
+    '-t',
+    `${MAX_HIGHLIGHT_SECONDS}`,
+    '-movflags',
+    '+faststart',
   ]
 }
 
-function runFfmpegCommand(
-  command: ffmpeg.FfmpegCommand,
-  outputPath: string
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    command
-      .output(outputPath)
-      .on('start', (cmdLine) => console.log(`  ffmpeg: ${cmdLine}`))
-      .on('progress', (progress) => {
-        if (progress.percent) {
-          process.stdout.write(`\r  encoding: ${Math.round(progress.percent)}%`)
-        }
-      })
-      .on('end', () => {
-        console.log(`\n  ✅ saved: ${outputPath}`)
-        resolve()
-      })
-      .on('error', (error) => {
-        rm(outputPath, { force: true })
-          .catch(() => undefined)
-          .finally(() => {
-            reject(error)
-          })
-      })
-      .run()
-  })
+export function buildSilentAudioInputArgs(): string[] {
+  return [
+    '-f',
+    'lavfi',
+    '-i',
+    `anullsrc=channel_layout=stereo:sample_rate=${HIGHLIGHT_AUDIO_RATE}`,
+  ]
 }
 
-function getCommandArguments(command: ffmpeg.FfmpegCommand): string[] {
-  const fluentCommand = command as ffmpeg.FfmpegCommand & {
-    _getArguments(): string[]
+function quoteCommandArg(arg: string): string {
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(arg)) {
+    return arg
   }
-  // eslint-disable-next-line no-underscore-dangle
-  return fluentCommand._getArguments()
+
+  return `'${arg.replace(/'/g, String.raw`'\''`)}'`
 }
 
-function buildCommandPreview(command: ffmpeg.FfmpegCommand): string {
-  return `ffmpeg ${getCommandArguments(command).join(' ')}`
+function buildCommandPreview(args: string[]): string {
+  return `ffmpeg ${args.map(quoteCommandArg).join(' ')}`
 }
 
-function detectAudioStream(inputPath: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(inputPath, (error, metadata) => {
-      if (error) {
-        reject(error)
-        return
-      }
+async function runFfmpeg(args: string[], outputPath: string): Promise<void> {
+  console.log(`  ffmpeg: ${buildCommandPreview(args)}`)
 
-      resolve(metadata.streams.some((stream) => stream.codec_type === 'audio'))
+  try {
+    await execFileAsync('ffmpeg', args, {
+      maxBuffer: 1024 * 1024 * 50,
     })
-  })
+  } catch (error) {
+    if (outputPath !== '-') {
+      await rm(outputPath, { force: true }).catch(() => undefined)
+    }
+    throw error
+  }
+
+  if (outputPath !== '-') {
+    console.log(`  ✅ saved: ${outputPath}`)
+  }
 }
 
-function addSilentAudioInput(command: ffmpeg.FfmpegCommand) {
-  return command
-    .input(`anullsrc=channel_layout=stereo:sample_rate=${HIGHLIGHT_AUDIO_RATE}`)
-    .inputFormat('lavfi')
+async function detectAudioStream(inputPath: string): Promise<boolean> {
+  const { stdout } = await execFileAsync(
+    'ffprobe',
+    [
+      '-v',
+      'error',
+      '-select_streams',
+      'a',
+      '-show_entries',
+      'stream=codec_type',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      inputPath,
+    ],
+    { maxBuffer: 1024 * 1024 * 10 }
+  )
+
+  return stdout
+    .split('\n')
+    .some((line) => line.trim().toLowerCase() === 'audio')
 }
 
-async function buildSegmentCommand(
-  segment: HighlightSegment
-): Promise<ffmpeg.FfmpegCommand> {
-  let command = ffmpeg().input(segment.path)
+async function buildSegmentArgs(
+  segment: HighlightSegment,
+  outputPath: string
+): Promise<string[]> {
+  const args = ['-hide_banner', '-loglevel', 'info', '-y']
 
   if (segment.type === 'image') {
-    return addSilentAudioInput(command.inputOptions(['-loop 1']))
-      .videoFilters(buildImageSegmentFilters(config.processing.secondsPerImage))
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .audioFrequency(HIGHLIGHT_AUDIO_RATE)
-      .audioChannels(2)
-      .outputOptions(
-        buildImageSegmentOutputOptions(config.processing.secondsPerImage)
-      )
+    args.push('-loop', '1', '-i', segment.path, ...buildSilentAudioInputArgs())
+    args.push(
+      '-vf',
+      buildImageSegmentFilters(config.processing.secondsPerImage).join(','),
+      '-c:v',
+      'libx264',
+      '-c:a',
+      'aac',
+      '-ar',
+      `${HIGHLIGHT_AUDIO_RATE}`,
+      '-ac',
+      '2',
+      ...buildImageSegmentOutputOptions(config.processing.secondsPerImage),
+      outputPath
+    )
+    return args
   }
 
   const hasSourceAudio = await detectAudioStream(segment.path)
-
-  command = command.videoFilters(buildVideoSegmentFilters())
-
+  args.push('-i', segment.path)
   if (!hasSourceAudio) {
-    command = addSilentAudioInput(command)
+    args.push(...buildSilentAudioInputArgs())
   }
 
-  return command
-    .videoCodec('libx264')
-    .audioCodec('aac')
-    .audioFrequency(HIGHLIGHT_AUDIO_RATE)
-    .audioChannels(2)
-    .outputOptions(buildVideoSegmentOutputOptions(hasSourceAudio))
+  args.push(
+    '-vf',
+    buildVideoSegmentFilters().join(','),
+    '-c:v',
+    'libx264',
+    '-c:a',
+    'aac',
+    '-ar',
+    `${HIGHLIGHT_AUDIO_RATE}`,
+    '-ac',
+    '2',
+    ...buildVideoSegmentOutputOptions(hasSourceAudio),
+    outputPath
+  )
+
+  return args
 }
 
-async function renderSegmentClip(
-  segment: HighlightSegment,
-  outputPath: string
-): Promise<void> {
-  const command = await buildSegmentCommand(segment)
-  await runFfmpegCommand(command, outputPath)
-}
-
-function buildConcatCommand(
-  segmentPaths: string[],
-  listPath: string
-): ffmpeg.FfmpegCommand {
-  let command = ffmpeg()
-    .input(listPath)
-    .inputOptions(['-f concat', '-safe 0'])
-    .outputOptions(buildFinalHighlightOutputOptions())
+function buildConcatArgs(
+  listPath: string,
+  outputPath: string,
+  dryRun: boolean
+): string[] {
+  const args = [
+    '-hide_banner',
+    '-loglevel',
+    'info',
+    '-y',
+    '-f',
+    'concat',
+    '-safe',
+    '0',
+    '-i',
+    listPath,
+  ]
 
   if (config.bgmPath) {
-    command = command
-      .input(config.bgmPath)
-      .complexFilter(['[0:a][1:a]amix=inputs=2:duration=first[aout]'])
-      .videoCodec('copy')
-      .audioCodec('aac')
-      .audioFrequency(HIGHLIGHT_AUDIO_RATE)
-      .audioChannels(2)
-      .outputOptions([
-        '-map 0:v:0',
-        '-map [aout]',
-        `-t ${MAX_HIGHLIGHT_SECONDS}`,
-      ])
-  } else {
-    command = command.outputOptions(['-c copy'])
+    args.push('-i', config.bgmPath)
+    args.push(
+      '-filter_complex',
+      '[0:a][1:a]amix=inputs=2:duration=first[aout]',
+      '-map',
+      '0:v:0',
+      '-map',
+      '[aout]',
+      '-c:v',
+      dryRun ? 'null' : 'copy',
+      '-c:a',
+      'aac',
+      '-ar',
+      `${HIGHLIGHT_AUDIO_RATE}`,
+      '-ac',
+      '2',
+      '-t',
+      `${MAX_HIGHLIGHT_SECONDS}`
+    )
+
+    if (dryRun) {
+      args.push('-f', 'null', outputPath)
+      return args
+    }
+
+    args.push('-movflags', '+faststart', outputPath)
+    return args
   }
 
-  return command
+  if (dryRun) {
+    args.push(
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
+      '-t',
+      `${MAX_HIGHLIGHT_SECONDS}`,
+      '-f',
+      'null',
+      outputPath
+    )
+    return args
+  }
+
+  args.push(...buildFinalHighlightOutputOptions(), '-c', 'copy', outputPath)
+  return args
 }
 
 async function concatSegmentClips(
@@ -225,10 +296,7 @@ async function concatSegmentClips(
   await writeFile(listPath, buildConcatListContent(segmentPaths), 'utf8')
 
   try {
-    await runFfmpegCommand(
-      buildConcatCommand(segmentPaths, listPath),
-      outputPath
-    )
+    await runFfmpeg(buildConcatArgs(listPath, outputPath, false), outputPath)
   } finally {
     await rm(listPath, { force: true })
   }
@@ -247,10 +315,9 @@ export async function buildHighlightCommandPreviews(
       tempDir,
       `segment-${String(index).padStart(4, '0')}.mp4`
     )
-    const command = await buildSegmentCommand(segment)
-    command.output(segmentOutputPath)
+    const args = await buildSegmentArgs(segment, segmentOutputPath)
     previews.push({
-      command: buildCommandPreview(command),
+      command: buildCommandPreview(args),
       kind: 'segment',
       outputPath: segmentOutputPath,
     })
@@ -258,15 +325,61 @@ export async function buildHighlightCommandPreviews(
   }
 
   const listPath = path.join(tempDir, 'concat-list.txt')
-  const concatCommand = buildConcatCommand(segmentPaths, listPath)
-  concatCommand.output(outputPath)
   previews.push({
-    command: buildCommandPreview(concatCommand),
+    command: buildCommandPreview(buildConcatArgs(listPath, outputPath, false)),
     kind: 'concat',
     outputPath,
   })
 
   return previews
+}
+
+export async function runHighlightDryRun(
+  segments: HighlightSegment[],
+  outputPath: string
+): Promise<HighlightDryRunResult> {
+  const tempDir = await mkdtemp(
+    path.join(os.tmpdir(), 'nas-photo-highlight-dry-run-')
+  )
+
+  try {
+    const commands: HighlightCommandPreview[] = []
+    const renderedSegmentPaths: string[] = []
+
+    for (const [index, segment] of segments.entries()) {
+      const segmentOutputPath = path.join(
+        tempDir,
+        `segment-${String(index).padStart(4, '0')}.mp4`
+      )
+      const args = await buildSegmentArgs(segment, segmentOutputPath)
+      commands.push({
+        command: buildCommandPreview(args),
+        kind: 'segment',
+        outputPath: segmentOutputPath,
+      })
+      await runFfmpeg(args, segmentOutputPath)
+      renderedSegmentPaths.push(segmentOutputPath)
+    }
+
+    const listPath = path.join(tempDir, 'concat-list.txt')
+    await writeFile(
+      listPath,
+      buildConcatListContent(renderedSegmentPaths),
+      'utf8'
+    )
+
+    const verifyArgs = buildConcatArgs(listPath, '-', true)
+    commands.push({
+      command: buildCommandPreview(verifyArgs),
+      kind: 'concat',
+      outputPath,
+    })
+    await runFfmpeg(verifyArgs, '-')
+
+    return { commands }
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
 }
 
 export async function generateHighlight(
@@ -285,7 +398,8 @@ export async function generateHighlight(
         tempDir,
         `segment-${String(index).padStart(4, '0')}.mp4`
       )
-      await renderSegmentClip(segment, segmentOutputPath)
+      const args = await buildSegmentArgs(segment, segmentOutputPath)
+      await runFfmpeg(args, segmentOutputPath)
       renderedSegmentPaths.push(segmentOutputPath)
     }
 
