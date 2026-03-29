@@ -1,4 +1,5 @@
 import { clamp } from '../core/normalize.js'
+import { weightFaces } from './expression.js'
 import type { FaceDetection } from '../types/score.js'
 
 function average(values: number[]) {
@@ -28,9 +29,14 @@ export function calculateBonusScore({
     return clamp(audioPeak * 0.2, 0, 1)
   }
 
-  const faceSizeScore = average(currentFaces.map((face) => clamp(face.faceSize / 0.35, 0, 1)))
-  const faceCenterScore = average(currentFaces.map((face) => clamp(1 - face.centerOffset, 0, 1)))
-  const faceFrontalScore = average(currentFaces.map((face) => clamp(face.frontalScore, 0, 1)))
+  const weights = weightFaces(currentFaces)
+  const weighted = (selector: (face: FaceDetection) => number) => (
+    currentFaces.reduce((sum, face, index) => sum + (selector(face) * (weights[index] ?? 0)), 0)
+  )
+
+  const faceSizeScore = weighted((face) => clamp(face.faceSize / 0.35, 0, 1))
+  const faceCenterScore = weighted((face) => clamp(1 - face.centerOffset, 0, 1))
+  const faceFrontalScore = weighted((face) => clamp(face.frontalScore, 0, 1))
   const stabilityScore = calculateStabilityScore(currentFaces, previousFaces)
 
   return clamp(

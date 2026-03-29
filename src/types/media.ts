@@ -9,3 +9,8 @@ export interface ExtractVideoFramesOptions {
   inputPath: string
   outputDir: string
 }
+
+export interface AudioPeakSample {
+  time: number
+  value: number
+}
