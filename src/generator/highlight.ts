@@ -204,10 +204,6 @@ async function concatSegmentClips(
   }
 }
 
-/**
- * Generate a highlight movie from image/video segments.
- * Each segment is normalized to a playable mp4 clip before final concat.
- */
 export async function generateHighlight(
   segments: HighlightSegment[],
   outputPath: string
