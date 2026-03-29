@@ -17,7 +17,7 @@ export function calculateTotalScore({
   focus: number
   bonus: number
 }) {
-  return (expression * 0.35) + (change * 0.30) + (focus * 0.25) + (bonus * 0.10)
+  return expression * 0.35 + change * 0.3 + focus * 0.25 + bonus * 0.1
 }
 
 export async function scoreVideoFrames(
@@ -32,18 +32,28 @@ export async function scoreVideoFrames(
 ): Promise<FrameScore[]> {
   if (frames.length === 0) return []
 
-  const laplacianValues = await Promise.all(frames.map((frame) => calculateLaplacianVariance(frame.path)))
+  const laplacianValues = await Promise.all(
+    frames.map((frame) => calculateLaplacianVariance(frame.path))
+  )
   const focusScores = normalizeByPercentile(laplacianValues)
 
-  const frameDiffValues = await Promise.all(frames.map(async (frame, index) => {
-    if (index === 0) return 0
-    return calculateFrameDiff(frames[index - 1].path, frame.path)
-  }))
+  const frameDiffValues = await Promise.all(
+    frames.map(async (frame, index) => {
+      if (index === 0) return 0
+      return calculateFrameDiff(frames[index - 1].path, frame.path)
+    })
+  )
   const normalizedFrameDiffs = normalizeByPercentile(frameDiffValues)
-  const normalizedSceneChanges = normalizeByPercentile(frames.map((frame) => frame.sceneChange))
+  const normalizedSceneChanges = normalizeByPercentile(
+    frames.map((frame) => frame.sceneChange)
+  )
   const resolvedFaceDetections = faceDetections ?? frames.map(() => [])
-  const expressionScores = resolvedFaceDetections.map((faces) => calculateExpressionScore(faces))
-  const expressionDeltas = expressionScores.map((score, index) => index === 0 ? 0 : Math.abs(score - expressionScores[index - 1]!))
+  const expressionScores = resolvedFaceDetections.map((faces) =>
+    calculateExpressionScore(faces)
+  )
+  const expressionDeltas = expressionScores.map((score, index) =>
+    index === 0 ? 0 : Math.abs(score - expressionScores[index - 1]!)
+  )
   const normalizedExpressionDeltas = normalizeByPercentile(expressionDeltas)
 
   return frames.map((frame, index) => {

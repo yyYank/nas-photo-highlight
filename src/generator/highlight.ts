@@ -46,17 +46,23 @@ export function generateHighlight(
   segments: HighlightSegment[],
   outputPath: string
 ): Promise<void> {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let cmd = ffmpeg()
 
     for (const segment of segments) {
       cmd = cmd.input(segment.path)
       if (segment.type === 'image') {
-        cmd = cmd.inputOptions(['-loop 1', `-t ${config.processing.secondsPerImage}`])
+        cmd = cmd.inputOptions([
+          '-loop 1',
+          `-t ${config.processing.secondsPerImage}`,
+        ])
       }
     }
 
-    const filterGraph = buildHighlightFilterGraph(segments, config.processing.secondsPerImage)
+    const filterGraph = buildHighlightFilterGraph(
+      segments,
+      config.processing.secondsPerImage
+    )
     const outputOptions = [
       '-map [vout]',
       '-pix_fmt yuv420p',
@@ -66,10 +72,7 @@ export function generateHighlight(
 
     if (config.bgmPath) {
       const bgmInputIndex = segments.length
-      cmd = cmd
-        .input(config.bgmPath)
-        .audioCodec('aac')
-        .audioBitrate('192k')
+      cmd = cmd.input(config.bgmPath).audioCodec('aac').audioBitrate('192k')
       outputOptions.push(`-map ${bgmInputIndex}:a:0`, '-shortest')
     } else {
       outputOptions.push('-an')
@@ -82,7 +85,8 @@ export function generateHighlight(
       .output(outputPath)
       .on('start', (cmdLine) => console.log(`  ffmpeg: ${cmdLine}`))
       .on('progress', (p) => {
-        if (p.percent) process.stdout.write(`\r  encoding: ${Math.round(p.percent)}%`)
+        if (p.percent)
+          process.stdout.write(`\r  encoding: ${Math.round(p.percent)}%`)
       })
       .on('end', async () => {
         console.log(`\n  ✅ saved: ${outputPath}`)

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
-import { calculateExpressionScore, weightFaces } from '../src/analyzers/expression'
+import {
+  calculateExpressionScore,
+  weightFaces,
+} from '../src/analyzers/expression'
 
 describe('calculateExpressionScore', () => {
   it('表情が強く顔品質が高いほど高得点になる', () => {

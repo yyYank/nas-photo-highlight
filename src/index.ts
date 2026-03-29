@@ -12,7 +12,9 @@ const inputListIndex = args.indexOf('--input-list')
 const inputListPath = inputListIndex >= 0 ? args[inputListIndex + 1] : undefined
 
 if (inputListIndex >= 0 && !inputListPath) {
-  throw new Error('Usage: bun run generate --input-list /path/to/input-files.txt')
+  throw new Error(
+    'Usage: bun run generate --input-list /path/to/input-files.txt'
+  )
 }
 
 if (args.includes('--run-now')) {

@@ -36,13 +36,17 @@ export function parseShowinfoLine(line: string) {
   }
 }
 
-export async function extractVideoFrames(options: ExtractVideoFramesOptions): Promise<SampledFrame[]> {
+export async function extractVideoFrames(
+  options: ExtractVideoFramesOptions
+): Promise<SampledFrame[]> {
   const args = buildFrameExtractionArgs(options)
   const { stderr } = await execFileAsync('ffmpeg', args)
   const frameMetadata = stderr
     .split('\n')
     .map(parseShowinfoLine)
-    .filter((line): line is { sceneChange: number, time: number } => line !== null)
+    .filter(
+      (line): line is { sceneChange: number; time: number } => line !== null
+    )
 
   const frameFiles = (await readdir(options.outputDir))
     .filter((file) => file.endsWith('.jpg'))

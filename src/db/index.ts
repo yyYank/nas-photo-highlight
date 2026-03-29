@@ -41,16 +41,22 @@ export const highlightDb = {
   },
 
   exists(groupKey: string): boolean {
-    const row = db.query('SELECT id FROM highlights WHERE group_key = ?').get(groupKey)
+    const row = db
+      .query('SELECT id FROM highlights WHERE group_key = ?')
+      .get(groupKey)
     return !!row
   },
 
   find(groupKey: string): HighlightRecord | null {
-    const row = db.query('SELECT * FROM highlights WHERE group_key = ?').get(groupKey)
+    const row = db
+      .query('SELECT * FROM highlights WHERE group_key = ?')
+      .get(groupKey)
     return (row as HighlightRecord | null) ?? null
   },
 
   list(): HighlightRecord[] {
-    return db.query('SELECT * FROM highlights ORDER BY group_key DESC').all() as HighlightRecord[]
+    return db
+      .query('SELECT * FROM highlights ORDER BY group_key DESC')
+      .all() as HighlightRecord[]
   },
 }

@@ -31,7 +31,9 @@ async function writeSolidImage(filePath: string, value: number) {
         b: value,
       },
     },
-  }).png().toFile(filePath)
+  })
+    .png()
+    .toFile(filePath)
 }
 
 describe('calculateFrameDiff', () => {
@@ -49,10 +51,12 @@ describe('calculateFrameDiff', () => {
 
 describe('combineChangeScore', () => {
   it('frame diff と scene change と expression delta を重み付き合成する', () => {
-    expect(combineChangeScore({
-      frameDiff: 1,
-      sceneChange: 0.5,
-      expressionDelta: 0.25,
-    })).toBeCloseTo(0.7, 5)
+    expect(
+      combineChangeScore({
+        frameDiff: 1,
+        sceneChange: 0.5,
+        expressionDelta: 0.25,
+      })
+    ).toBeCloseTo(0.7, 5)
   })
 })

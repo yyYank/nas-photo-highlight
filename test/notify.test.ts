@@ -34,12 +34,14 @@ describe('notify', () => {
       highlights: [
         {
           groupKey: '2026-03-20',
-          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-20_highlight.mp4',
+          outputPath:
+            '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-20_highlight.mp4',
           imageCount: 10,
         },
         {
           groupKey: '2026-03-21',
-          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+          outputPath:
+            '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
           imageCount: 12,
         },
       ],
@@ -58,8 +60,16 @@ describe('notify', () => {
       finishedAt: '2026-03-26T12:34:56.000Z',
       outputPath: '/Volumes/highlights',
       highlights: [
-        { groupKey: '2026-03-20', outputPath: '/Volumes/highlights/2026-03-20_highlight.mp4', imageCount: 10 },
-        { groupKey: '2026-03-21', outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4', imageCount: 12 },
+        {
+          groupKey: '2026-03-20',
+          outputPath: '/Volumes/highlights/2026-03-20_highlight.mp4',
+          imageCount: 10,
+        },
+        {
+          groupKey: '2026-03-21',
+          outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4',
+          imageCount: 12,
+        },
       ],
     })
 
@@ -78,7 +88,8 @@ describe('notify', () => {
         highlights: [
           {
             groupKey: '2026-03-21',
-            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            outputPath:
+              '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
             imageCount: 12,
           },
         ],
@@ -87,7 +98,9 @@ describe('notify', () => {
     )
 
     expect(message).toContain('リンク:')
-    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
+    expect(message).toContain(
+      'http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4'
+    )
   })
 
   it('BASE_URL があると Viewer URL を常に通知文に含める', () => {
@@ -103,7 +116,8 @@ describe('notify', () => {
         recentHighlights: [
           {
             groupKey: '2026-03-21',
-            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            outputPath:
+              '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
             imageCount: 12,
           },
         ],
@@ -127,12 +141,14 @@ describe('notify', () => {
         recentHighlights: [
           {
             groupKey: '2026-03-21',
-            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+            outputPath:
+              '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
             imageCount: 12,
           },
           {
             groupKey: '2026-03-07',
-            outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-07_highlight.mp4',
+            outputPath:
+              '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-07_highlight.mp4',
             imageCount: 13,
           },
         ],
@@ -140,20 +156,29 @@ describe('notify', () => {
     )
 
     expect(message).toContain('最新ハイライト:')
-    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
-    expect(message).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-07_highlight.mp4')
+    expect(message).toContain(
+      'http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4'
+    )
+    expect(message).toContain(
+      'http://192.168.1.10:8888/media/2026/03/2026-03-07_highlight.mp4'
+    )
   })
 
   it('webhook へ直近結果を送る', async () => {
-    const send = mock(async (_url: string, init?: RequestInit) =>
-      new Response(null, { status: 200 })
+    const send = mock(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(null, { status: 200 })
     )
     const summary = {
       generated: 1,
       finishedAt: '2026-03-26T12:34:56.000Z',
       outputPath: '/Volumes/highlights',
       highlights: [
-        { groupKey: '2026-03-21', outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4', imageCount: 12 },
+        {
+          groupKey: '2026-03-21',
+          outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4',
+          imageCount: 12,
+        },
       ],
     }
 
@@ -170,18 +195,24 @@ describe('notify', () => {
   })
 
   it('gmail provider ならメール送信を使う', async () => {
-    const sendMail = mock(async (_message: {
-      from: string
-      to: string
-      subject: string
-      text: string
-    }) => undefined)
+    const sendMail = mock(
+      async (_mail: {
+        from: string
+        to: string
+        subject: string
+        text: string
+      }) => undefined
+    )
     const summary = {
       generated: 1,
       finishedAt: '2026-03-26T12:34:56.000Z',
       outputPath: '/Volumes/highlights',
       highlights: [
-        { groupKey: '2026-03-21', outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4', imageCount: 12 },
+        {
+          groupKey: '2026-03-21',
+          outputPath: '/Volumes/highlights/2026-03-21_highlight.mp4',
+          imageCount: 12,
+        },
       ],
     }
 
@@ -204,12 +235,14 @@ describe('notify', () => {
   })
 
   it('gmail provider なら本文にハイライト URL を含める', async () => {
-    const sendMail = mock(async (_message: {
-      from: string
-      to: string
-      subject: string
-      text: string
-    }) => undefined)
+    const sendMail = mock(
+      async (_mail: {
+        from: string
+        to: string
+        subject: string
+        text: string
+      }) => undefined
+    )
     const summary = {
       generated: 1,
       finishedAt: '2026-03-26T12:34:56.000Z',
@@ -217,7 +250,8 @@ describe('notify', () => {
       highlights: [
         {
           groupKey: '2026-03-21',
-          outputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+          outputPath:
+            '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
           imageCount: 12,
         },
       ],
@@ -233,6 +267,8 @@ describe('notify', () => {
       sendMail,
     })
 
-    expect(sendMail.mock.calls[0]?.[0]?.text).toContain('http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4')
+    expect(sendMail.mock.calls[0]?.[0]?.text).toContain(
+      'http://192.168.1.10:8888/media/2026/03/2026-03-21_highlight.mp4'
+    )
   })
 })

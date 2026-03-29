@@ -13,7 +13,10 @@ export interface NasDeployConfig {
   deployDockerBin: string
 }
 
-function requiredEnv(env: Record<string, string | undefined>, key: string): string {
+function requiredEnv(
+  env: Record<string, string | undefined>,
+  key: string
+): string {
   const value = env[key]?.trim()
   if (!value) {
     throw new Error(`NAS deploy config is missing: ${key}`)
@@ -25,7 +28,9 @@ export function normalizeDeployMediaPath(deployMediaPath: string): string {
   return deployMediaPath.replace(/\/\{yyyy\}(?:\/\{mm\})?(?:\/.*)?$/, '')
 }
 
-export function buildNasDeployConfig(env: Record<string, string | undefined>): NasDeployConfig {
+export function buildNasDeployConfig(
+  env: Record<string, string | undefined>
+): NasDeployConfig {
   return {
     localPhotoPath: requiredEnv(env, 'NAS_PHOTO_PATH'),
     localMetaOutputPath: requiredEnv(env, 'NAS_META_OUTPUT_PATH'),
@@ -33,7 +38,9 @@ export function buildNasDeployConfig(env: Record<string, string | undefined>): N
     deployHost: requiredEnv(env, 'NAS_DEPLOY_HOST'),
     deployDir: requiredEnv(env, 'NAS_DEPLOY_DIR'),
     deployMetaPath: requiredEnv(env, 'NAS_DEPLOY_META_PATH'),
-    deployMediaPath: normalizeDeployMediaPath(requiredEnv(env, 'NAS_DEPLOY_MEDIA_PATH')),
+    deployMediaPath: normalizeDeployMediaPath(
+      requiredEnv(env, 'NAS_DEPLOY_MEDIA_PATH')
+    ),
     deployPort: Number(env.NAS_DEPLOY_PORT ?? '8888'),
     deployDockerBin: env.NAS_DEPLOY_DOCKER_BIN?.trim() || 'docker',
   }
@@ -80,7 +87,10 @@ export function renderNasDockerCompose(config: NasDeployConfig): string {
 }
 
 export function buildRemoteDeployCommands(config: NasDeployConfig) {
-  const remoteComposePath = path.posix.join(config.deployDir, 'docker-compose.yml')
+  const remoteComposePath = path.posix.join(
+    config.deployDir,
+    'docker-compose.yml'
+  )
 
   return {
     mkdirArgs: [config.deployHost, 'mkdir', '-p', config.deployDir],
@@ -90,11 +100,22 @@ export function buildRemoteDeployCommands(config: NasDeployConfig) {
       path.posix.join('nas', 'generated', 'nginx.conf'),
       `${config.deployHost}:${config.deployDir}/`,
     ],
-    composeArgs: [config.deployHost, config.deployDockerBin, 'compose', '-f', remoteComposePath, 'up', '-d'],
+    composeArgs: [
+      config.deployHost,
+      config.deployDockerBin,
+      'compose',
+      '-f',
+      remoteComposePath,
+      'up',
+      '-d',
+    ],
   }
 }
 
-export function writeNasDeployFiles(config: NasDeployConfig, outputDir = path.join('nas', 'generated')) {
+export function writeNasDeployFiles(
+  config: NasDeployConfig,
+  outputDir = path.join('nas', 'generated')
+) {
   mkdirSync(outputDir, { recursive: true })
 
   const dockerComposePath = path.join(outputDir, 'docker-compose.yml')
@@ -118,7 +139,9 @@ async function runCommand(command: string, args: string[]) {
   const exitCode = await proc.exited
 
   if (exitCode !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed with exit code ${exitCode}`)
+    throw new Error(
+      `${command} ${args.join(' ')} failed with exit code ${exitCode}`
+    )
   }
 }
 
@@ -138,13 +161,17 @@ if (import.meta.main) {
   writeNasDeployFiles(config)
 
   if (args.includes('--write-only')) {
-    console.log('Generated nas/generated/docker-compose.yml and nas/generated/nginx.conf')
+    console.log(
+      'Generated nas/generated/docker-compose.yml and nas/generated/nginx.conf'
+    )
     process.exit(0)
   }
 
   if (args.includes('--dry-run')) {
     const commands = buildRemoteDeployCommands(config)
-    console.log('Generated nas/generated/docker-compose.yml and nas/generated/nginx.conf')
+    console.log(
+      'Generated nas/generated/docker-compose.yml and nas/generated/nginx.conf'
+    )
     console.log(`ssh ${commands.mkdirArgs.join(' ')}`)
     console.log(`scp ${commands.scpArgs.join(' ')}`)
     console.log(`ssh ${commands.composeArgs.join(' ')}`)
@@ -152,5 +179,7 @@ if (import.meta.main) {
   }
 
   await deployNas(config)
-  console.log(`Deployed NAS web config to ${config.deployHost}:${config.deployDir}`)
+  console.log(
+    `Deployed NAS web config to ${config.deployHost}:${config.deployDir}`
+  )
 }

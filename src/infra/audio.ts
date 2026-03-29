@@ -42,7 +42,9 @@ export function parseAudioPeakLines(stderr: string): AudioPeakSample[] {
   return samples
 }
 
-export async function extractAudioPeaks(inputPath: string): Promise<AudioPeakSample[]> {
+export async function extractAudioPeaks(
+  inputPath: string
+): Promise<AudioPeakSample[]> {
   const args = buildAudioPeakExtractionArgs(inputPath)
   const { stderr } = await execFileAsync('ffmpeg', args)
   return parseAudioPeakLines(stderr)
@@ -55,7 +57,9 @@ export function alignAudioPeaksToFrames(
   return frameTimes.map((time) => {
     const nearest = peaks.reduce<AudioPeakSample | null>((best, peak) => {
       if (!best) return peak
-      return Math.abs(peak.time - time) < Math.abs(best.time - time) ? peak : best
+      return Math.abs(peak.time - time) < Math.abs(best.time - time)
+        ? peak
+        : best
     }, null)
 
     return nearest?.value ?? 0

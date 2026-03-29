@@ -9,16 +9,18 @@ describe('resolveFaceDetectionsForFrames', () => {
         { path: '/tmp/b.jpg', time: 1, sceneChange: 0.3 },
       ],
       {
-        '/tmp/b.jpg': [{
-          smile: 0.7,
-          surprise: 0.2,
-          eyeOpen: 0.9,
-          mouthOpen: 0.1,
-          faceSize: 0.25,
-          centerOffset: 0.1,
-          frontalScore: 0.9,
-          detectionConfidence: 0.95,
-        }],
+        '/tmp/b.jpg': [
+          {
+            smile: 0.7,
+            surprise: 0.2,
+            eyeOpen: 0.9,
+            mouthOpen: 0.1,
+            faceSize: 0.25,
+            centerOffset: 0.1,
+            frontalScore: 0.9,
+            detectionConfidence: 0.95,
+          },
+        ],
       }
     )
 

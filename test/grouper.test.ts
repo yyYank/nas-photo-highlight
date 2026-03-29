@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { groupListedMedia, groupListedImages, isImagePath, isVideoPath, readInputList } from '../src/scanner/grouper'
+import {
+  groupListedMedia,
+  groupListedImages,
+  isImagePath,
+  isVideoPath,
+  readInputList,
+} from '../src/scanner/grouper'
 
 const tempDirs: string[] = []
 
@@ -95,8 +101,10 @@ describe('groupListedImages', () => {
       'folder',
       async () => 'trip',
       async (mediaPath) => {
-        if (mediaPath.endsWith('a.jpg')) return new Date('2026-03-20T10:00:00.000Z')
-        if (mediaPath.endsWith('c.mov')) return new Date('2026-03-20T10:01:00.000Z')
+        if (mediaPath.endsWith('a.jpg'))
+          return new Date('2026-03-20T10:00:00.000Z')
+        if (mediaPath.endsWith('c.mov'))
+          return new Date('2026-03-20T10:01:00.000Z')
         return new Date('2026-03-20T10:02:00.000Z')
       }
     )

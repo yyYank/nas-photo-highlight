@@ -26,7 +26,7 @@ async function writeGradient(filePath: string, start: number, end: number) {
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const value = Math.round(start + ((end - start) * x / (width - 1)))
+      const value = Math.round(start + ((end - start) * x) / (width - 1))
       const offset = (y * width + x) * 3
       pixels[offset] = value
       pixels[offset + 1] = value
@@ -40,17 +40,21 @@ async function writeGradient(filePath: string, start: number, end: number) {
       height,
       channels: 3,
     },
-  }).png().toFile(filePath)
+  })
+    .png()
+    .toFile(filePath)
 }
 
 describe('calculateTotalScore', () => {
   it('親 issue の初期重みで総合スコアを計算する', () => {
-    expect(calculateTotalScore({
-      expression: 0.6,
-      change: 0.4,
-      focus: 0.2,
-      bonus: 0.1,
-    })).toBeCloseTo(0.39, 5)
+    expect(
+      calculateTotalScore({
+        expression: 0.6,
+        change: 0.4,
+        focus: 0.2,
+        bonus: 0.1,
+      })
+    ).toBeCloseTo(0.39, 5)
   })
 })
 
@@ -63,33 +67,40 @@ describe('scoreVideoFrames', () => {
     await writeGradient(a, 0, 255)
     await writeGradient(b, 255, 0)
 
-    const scores = await scoreVideoFrames([
-      { path: a, time: 0, sceneChange: 0 },
-      { path: b, time: 0.25, sceneChange: 0.7 },
-    ], {
-      faceDetections: [
-        [{
-          smile: 0.2,
-          surprise: 0.1,
-          eyeOpen: 0.8,
-          mouthOpen: 0.2,
-          faceSize: 0.22,
-          centerOffset: 0.15,
-          frontalScore: 0.85,
-          detectionConfidence: 0.9,
-        }],
-        [{
-          smile: 0.9,
-          surprise: 0.1,
-          eyeOpen: 0.9,
-          mouthOpen: 0.3,
-          faceSize: 0.28,
-          centerOffset: 0.1,
-          frontalScore: 0.95,
-          detectionConfidence: 0.95,
-        }],
+    const scores = await scoreVideoFrames(
+      [
+        { path: a, time: 0, sceneChange: 0 },
+        { path: b, time: 0.25, sceneChange: 0.7 },
       ],
-    })
+      {
+        faceDetections: [
+          [
+            {
+              smile: 0.2,
+              surprise: 0.1,
+              eyeOpen: 0.8,
+              mouthOpen: 0.2,
+              faceSize: 0.22,
+              centerOffset: 0.15,
+              frontalScore: 0.85,
+              detectionConfidence: 0.9,
+            },
+          ],
+          [
+            {
+              smile: 0.9,
+              surprise: 0.1,
+              eyeOpen: 0.9,
+              mouthOpen: 0.3,
+              faceSize: 0.28,
+              centerOffset: 0.1,
+              frontalScore: 0.95,
+              detectionConfidence: 0.95,
+            },
+          ],
+        ],
+      }
+    )
 
     expect(scores).toHaveLength(2)
     expect(scores[0]?.time).toBe(0)

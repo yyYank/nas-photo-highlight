@@ -45,7 +45,9 @@ describe('createStaticHandler', () => {
       uiHtml: '<!DOCTYPE html><title>ui</title>',
     })
 
-    const response = await handler(new Request('http://localhost:3000/highlights.json'))
+    const response = await handler(
+      new Request('http://localhost:3000/highlights.json')
+    )
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/json')
@@ -63,7 +65,9 @@ describe('createStaticHandler', () => {
       uiHtml: '<!DOCTYPE html><title>ui</title>',
     })
 
-    const response = await handler(new Request('http://localhost:3000/demo.mp4'))
+    const response = await handler(
+      new Request('http://localhost:3000/demo.mp4')
+    )
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('video/mp4')

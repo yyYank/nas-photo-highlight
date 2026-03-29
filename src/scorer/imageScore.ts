@@ -58,7 +58,10 @@ if (import.meta.main) {
 
   console.log(`Scoring ${files.length} images...`)
   const scores = await Promise.all(files.map(scoreImage))
-  scores.sort((a, b) => b.total - a.total).slice(0, 10).forEach((s) => {
-    console.log(`[${s.total.toFixed(1)}] ${path.basename(s.path)}`)
-  })
+  scores
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+    .forEach((s) => {
+      console.log(`[${s.total.toFixed(1)}] ${path.basename(s.path)}`)
+    })
 }
