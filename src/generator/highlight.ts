@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
 import { config } from '../config'
+import { resolveFfmpegBin, resolveFfprobeBin } from '../infra/ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
 
@@ -134,7 +135,7 @@ async function runFfmpeg(args: string[], outputPath: string): Promise<void> {
   console.log(`  ffmpeg: ${buildCommandPreview(args)}`)
 
   try {
-    await execFileAsync('ffmpeg', args, {
+    await execFileAsync(resolveFfmpegBin(), args, {
       maxBuffer: 1024 * 1024 * 50,
     })
   } catch (error) {
@@ -151,7 +152,7 @@ async function runFfmpeg(args: string[], outputPath: string): Promise<void> {
 
 async function detectAudioStream(inputPath: string): Promise<boolean> {
   const { stdout } = await execFileAsync(
-    'ffprobe',
+    resolveFfprobeBin(),
     [
       '-v',
       'error',
