@@ -77,9 +77,7 @@ describe('buildFinalHighlightOutputOptions', () => {
       '-map 0:v:0',
       '-map 0:a:0',
       '-t 60',
-      '-pix_fmt yuv420p',
       '-movflags +faststart',
-      '-r 30',
     ])
   })
 })

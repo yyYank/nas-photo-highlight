@@ -20,6 +20,7 @@ if (inputListIndex >= 0 && !inputListPath) {
 if (args.includes('--run-now')) {
   // One-shot: process immediately and exit
   await runPipeline({
+    dryRun: args.includes('--dry-run'),
     force: args.includes('--force'),
     inputListPath,
   })

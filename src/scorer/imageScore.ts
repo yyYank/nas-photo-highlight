@@ -32,11 +32,15 @@ export async function scoreImage(imagePath: string): Promise<ImageScore> {
 /**
  * Pick the top `limit` best shots from a list of image paths.
  */
+export async function scoreImages(imagePaths: string[]): Promise<ImageScore[]> {
+  return Promise.all(imagePaths.map(scoreImage))
+}
+
 export async function pickBestShots(
   imagePaths: string[],
   limit: number = 25
 ): Promise<string[]> {
-  const scores = await Promise.all(imagePaths.map(scoreImage))
+  const scores = await scoreImages(imagePaths)
   return scores
     .sort((a, b) => b.total - a.total)
     .slice(0, limit)
