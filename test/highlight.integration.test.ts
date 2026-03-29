@@ -6,6 +6,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  readFile,
   rm,
   stat,
   writeFile,
@@ -168,6 +169,36 @@ async function createSampleVideo(
   await runMediaTool(ffmpegBin, args)
 }
 
+async function createRotatedWeirdCodecVideo(
+  ffmpegBin: string,
+  outputPath: string
+): Promise<void> {
+  await runMediaTool(ffmpegBin, [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc=size=180x320:rate=12',
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=523.25:sample_rate=48000',
+    '-t',
+    '4',
+    '-metadata:s:v:0',
+    'rotate=90',
+    '-c:v',
+    'mpeg4',
+    '-c:a',
+    'aac',
+    '-shortest',
+    outputPath,
+  ])
+}
+
 async function createBgmTrack(
   ffmpegBin: string,
   outputPath: string
@@ -253,6 +284,8 @@ describe('highlight integration', () => {
         const imageBPath = path.join(workDir, 'image-b.png')
         const audioVideoPath = path.join(workDir, 'sample-audio.mp4')
         const silentVideoPath = path.join(workDir, 'sample-silent.mp4')
+        const rotatedVideoPath = path.join(workDir, 'rotated-weird.mov')
+        const brokenVideoPath = path.join(workDir, 'broken.mp4')
         const bgmPath = path.join(workDir, 'bgm.mp3')
         const faceAnalysisPath = path.join(workDir, 'faces.json')
         const evaluateAPath = path.join(workDir, 'candidate-a.json')
@@ -260,6 +293,7 @@ describe('highlight integration', () => {
         const inputListPath = path.join(workDir, 'input-list.txt')
         const outputDir = path.join(workDir, 'out')
         const metaDir = path.join(workDir, 'meta')
+        const fakeHeicPath = path.join(workDir, 'image-c.heic')
 
         processingConfig.secondsPerImage = 1
         processingConfig.imagesPerHighlight = 2
@@ -277,12 +311,17 @@ describe('highlight integration', () => {
         await createImage(imageBPath, { r: 40, g: 160, b: 220 })
         await createSampleVideo(mediaEnv.ffmpegBin, audioVideoPath, true)
         await createSampleVideo(mediaEnv.ffmpegBin, silentVideoPath, false)
+        await createRotatedWeirdCodecVideo(mediaEnv.ffmpegBin, rotatedVideoPath)
         await createBgmTrack(mediaEnv.ffmpegBin, bgmPath)
+        await writeFile(fakeHeicPath, await readFile(imageBPath))
+        await writeFile(brokenVideoPath, 'not-an-mp4', 'utf8')
         await writeFile(faceAnalysisPath, '{}', 'utf8')
 
         const mixedOutputPath = path.join(workDir, 'highlight-mixed.mp4')
         const silentOutputPath = path.join(workDir, 'highlight-silent.mp4')
         const bgmOutputPath = path.join(workDir, 'highlight-bgm.mp4')
+        const rotatedOutputPath = path.join(workDir, 'highlight-rotated.mp4')
+        const brokenOutputPath = path.join(workDir, 'highlight-broken.mp4')
         const dryRunOutputPath = path.join(workDir, 'dry-run-output.mp4')
         const mixedSegments: HighlightSegment[] = [
           { path: imageAPath, type: 'image' },
@@ -322,6 +361,21 @@ describe('highlight integration', () => {
           silentProbe.streams.some((stream) => stream.codec_type === 'audio')
         ).toBe(true)
 
+        await generateHighlight(
+          [{ path: rotatedVideoPath, type: 'video' }],
+          rotatedOutputPath
+        )
+        const rotatedProbe = await probeMedia(
+          mediaEnv.ffprobeBin,
+          rotatedOutputPath
+        )
+        expect(
+          rotatedProbe.streams.some((stream) => stream.codec_type === 'video')
+        ).toBe(true)
+        expect(
+          rotatedProbe.streams.some((stream) => stream.codec_type === 'audio')
+        ).toBe(true)
+
         mutableConfig.bgmPath = bgmPath
         await generateHighlight(mixedSegments, bgmOutputPath)
         const bgmProbe = await probeMedia(mediaEnv.ffprobeBin, bgmOutputPath)
@@ -341,6 +395,14 @@ describe('highlight integration', () => {
             command.command.includes('amix=inputs=2:duration=first')
           )
         ).toBe(true)
+
+        await expect(
+          generateHighlight(
+            [{ path: brokenVideoPath, type: 'video' }],
+            brokenOutputPath
+          )
+        ).rejects.toThrow()
+        expect(await fileExists(brokenOutputPath)).toBe(false)
 
         const commonEnv = {
           ...process.env,
@@ -416,10 +478,11 @@ describe('highlight integration', () => {
         mutableConfig.bgmPath = ''
         await writeFile(
           inputListPath,
-          [imageAPath, audioVideoPath, imageBPath].join('\n'),
+          [imageAPath, fakeHeicPath, audioVideoPath].join('\n'),
           'utf8'
         )
 
+        processingConfig.groupBy = 'date'
         const pipelineSummary = await runPipeline({
           dryRun: true,
           force: true,
