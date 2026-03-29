@@ -1,8 +1,13 @@
 import path from 'path'
 import { writeFileSync } from 'fs'
 import { groupImages, isImagePath, isVideoPath } from './scanner/grouper'
-import { pickBestShots } from './scorer/imageScore'
-import { generateHighlight, type HighlightSegment } from './generator/highlight'
+import { scoreImages } from './scorer/imageScore'
+import {
+  buildHighlightCommandPreviews,
+  generateHighlight,
+  type HighlightCommandPreview,
+  type HighlightSegment,
+} from './generator/highlight'
 import { highlightDb } from './db/index'
 import { config } from './config'
 import {
@@ -84,11 +89,53 @@ export function shouldSkipHighlightGeneration({
   return existingOutputPath === targetOutputPath
 }
 
+interface DryRunHighlightGroup {
+  groupKey: string
+  imagePaths: string[]
+  mediaPaths: string[]
+  outputPath: string
+  scores: Awaited<ReturnType<typeof scoreImages>>
+  segments: HighlightSegment[]
+  ffmpegCommands: HighlightCommandPreview[]
+  skipped: boolean
+  videoPaths: string[]
+}
+
+function printDryRunGroup(group: DryRunHighlightGroup) {
+  console.log(`\n🧪 Dry run: ${group.groupKey}`)
+  console.log(`  Output: ${group.outputPath}`)
+  console.log(`  Media (${group.mediaPaths.length}):`)
+  group.mediaPaths.forEach((mediaPath) => console.log(`    - ${mediaPath}`))
+
+  console.log(`  Selected images (${group.scores.length} scored):`)
+  group.scores.forEach((score) => {
+    console.log(
+      `    - ${score.total.toFixed(2)} | sharp=${score.sharpness.toFixed(2)} | bright=${score.brightnessScore.toFixed(2)} | ${score.path}`
+    )
+  })
+
+  console.log(`  Segments (${group.segments.length}):`)
+  group.segments.forEach((segment) => {
+    console.log(`    - ${segment.type} | ${segment.path}`)
+  })
+
+  console.log('  ffmpeg commands:')
+  group.ffmpegCommands.forEach((preview) => {
+    console.log(`    [${preview.kind}] ${preview.command}`)
+  })
+
+  if (group.skipped) {
+    console.log('  Result: skipped by existing output')
+  }
+}
+
 export async function runPipeline({
   force = false,
+  dryRun = false,
   inputListPath,
 }: {
   force?: boolean
+  dryRun?: boolean
   inputListPath?: string
 } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning media...')
@@ -132,16 +179,38 @@ export async function runPipeline({
       `\n🎬 Processing: ${key} (${imagePaths.length} images, ${videoPaths.length} videos)`
     )
 
-    const bestImages =
-      imagePaths.length > 0
-        ? await pickBestShots(imagePaths, config.processing.imagesPerHighlight)
-        : []
+    const imageScores =
+      imagePaths.length > 0 ? await scoreImages(imagePaths) : []
+    const bestImages = imageScores
+      .slice()
+      .sort((a, b) => b.total - a.total)
+      .slice(0, config.processing.imagesPerHighlight)
+      .map((score) => score.path)
     console.log(`  Selected ${bestImages.length} best shots`)
 
     const segments = buildHighlightSegments(mediaPaths, bestImages)
     console.log(
       `  Added ${videoPaths.length} videos, ${segments.length} total segments`
     )
+
+    if (dryRun) {
+      const ffmpegCommands = await buildHighlightCommandPreviews(
+        segments,
+        outputPath
+      )
+      printDryRunGroup({
+        ffmpegCommands,
+        groupKey: key,
+        imagePaths: bestImages,
+        mediaPaths,
+        outputPath,
+        scores: imageScores.slice().sort((a, b) => b.total - a.total),
+        segments,
+        skipped: false,
+        videoPaths,
+      })
+      continue
+    }
 
     await generateHighlight(segments, outputPath)
 
@@ -152,6 +221,16 @@ export async function runPipeline({
       imageCount: bestImages.length,
     })
     generated++
+  }
+
+  if (dryRun) {
+    console.log('\n✅ Dry run complete — no files were written')
+    return {
+      generated: 0,
+      finishedAt: new Date().toISOString(),
+      outputPath: resolvedOutputPath,
+      highlights: [],
+    }
   }
 
   // Always refresh the manifest so the NAS viewer stays up to date

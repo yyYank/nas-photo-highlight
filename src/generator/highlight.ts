@@ -15,6 +15,12 @@ export interface HighlightSegment {
   type: 'image' | 'video'
 }
 
+export interface HighlightCommandPreview {
+  outputPath: string
+  command: string
+  kind: 'segment' | 'concat'
+}
+
 export function buildImageSegmentFilters(secondsPerImage: number): string[] {
   return [
     `scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=decrease`,
@@ -109,6 +115,18 @@ function runFfmpegCommand(
   })
 }
 
+function getCommandArguments(command: ffmpeg.FfmpegCommand): string[] {
+  const fluentCommand = command as ffmpeg.FfmpegCommand & {
+    _getArguments(): string[]
+  }
+  // eslint-disable-next-line no-underscore-dangle
+  return fluentCommand._getArguments()
+}
+
+function buildCommandPreview(command: ffmpeg.FfmpegCommand): string {
+  return `ffmpeg ${getCommandArguments(command).join(' ')}`
+}
+
 function detectAudioStream(inputPath: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(inputPath, (error, metadata) => {
@@ -128,14 +146,13 @@ function addSilentAudioInput(command: ffmpeg.FfmpegCommand) {
     .inputFormat('lavfi')
 }
 
-async function renderSegmentClip(
-  segment: HighlightSegment,
-  outputPath: string
-): Promise<void> {
+async function buildSegmentCommand(
+  segment: HighlightSegment
+): Promise<ffmpeg.FfmpegCommand> {
   let command = ffmpeg().input(segment.path)
 
   if (segment.type === 'image') {
-    command = addSilentAudioInput(command.inputOptions(['-loop 1']))
+    return addSilentAudioInput(command.inputOptions(['-loop 1']))
       .videoFilters(buildImageSegmentFilters(config.processing.secondsPerImage))
       .videoCodec('libx264')
       .audioCodec('aac')
@@ -144,9 +161,6 @@ async function renderSegmentClip(
       .outputOptions(
         buildImageSegmentOutputOptions(config.processing.secondsPerImage)
       )
-
-    await runFfmpegCommand(command, outputPath)
-    return
   }
 
   const hasSourceAudio = await detectAudioStream(segment.path)
@@ -157,14 +171,49 @@ async function renderSegmentClip(
     command = addSilentAudioInput(command)
   }
 
-  command = command
+  return command
     .videoCodec('libx264')
     .audioCodec('aac')
     .audioFrequency(HIGHLIGHT_AUDIO_RATE)
     .audioChannels(2)
     .outputOptions(buildVideoSegmentOutputOptions(hasSourceAudio))
+}
 
+async function renderSegmentClip(
+  segment: HighlightSegment,
+  outputPath: string
+): Promise<void> {
+  const command = await buildSegmentCommand(segment)
   await runFfmpegCommand(command, outputPath)
+}
+
+function buildConcatCommand(
+  segmentPaths: string[],
+  listPath: string
+): ffmpeg.FfmpegCommand {
+  let command = ffmpeg()
+    .input(listPath)
+    .inputOptions(['-f concat', '-safe 0'])
+    .outputOptions(buildFinalHighlightOutputOptions())
+
+  if (config.bgmPath) {
+    command = command
+      .input(config.bgmPath)
+      .complexFilter(['[0:a][1:a]amix=inputs=2:duration=first[aout]'])
+      .videoCodec('copy')
+      .audioCodec('aac')
+      .audioFrequency(HIGHLIGHT_AUDIO_RATE)
+      .audioChannels(2)
+      .outputOptions([
+        '-map 0:v:0',
+        '-map [aout]',
+        `-t ${MAX_HIGHLIGHT_SECONDS}`,
+      ])
+  } else {
+    command = command.outputOptions(['-c copy'])
+  }
+
+  return command
 }
 
 async function concatSegmentClips(
@@ -176,32 +225,48 @@ async function concatSegmentClips(
   await writeFile(listPath, buildConcatListContent(segmentPaths), 'utf8')
 
   try {
-    let command = ffmpeg()
-      .input(listPath)
-      .inputOptions(['-f concat', '-safe 0'])
-      .outputOptions(buildFinalHighlightOutputOptions())
-
-    if (config.bgmPath) {
-      command = command
-        .input(config.bgmPath)
-        .complexFilter(['[0:a][1:a]amix=inputs=2:duration=first[aout]'])
-        .videoCodec('copy')
-        .audioCodec('aac')
-        .audioFrequency(HIGHLIGHT_AUDIO_RATE)
-        .audioChannels(2)
-        .outputOptions([
-          '-map 0:v:0',
-          '-map [aout]',
-          `-t ${MAX_HIGHLIGHT_SECONDS}`,
-        ])
-    } else {
-      command = command.outputOptions(['-c copy'])
-    }
-
-    await runFfmpegCommand(command, outputPath)
+    await runFfmpegCommand(
+      buildConcatCommand(segmentPaths, listPath),
+      outputPath
+    )
   } finally {
     await rm(listPath, { force: true })
   }
+}
+
+export async function buildHighlightCommandPreviews(
+  segments: HighlightSegment[],
+  outputPath: string
+): Promise<HighlightCommandPreview[]> {
+  const tempDir = path.join(os.tmpdir(), 'nas-photo-highlight-render-preview')
+  const previews: HighlightCommandPreview[] = []
+  const segmentPaths: string[] = []
+
+  for (const [index, segment] of segments.entries()) {
+    const segmentOutputPath = path.join(
+      tempDir,
+      `segment-${String(index).padStart(4, '0')}.mp4`
+    )
+    const command = await buildSegmentCommand(segment)
+    command.output(segmentOutputPath)
+    previews.push({
+      command: buildCommandPreview(command),
+      kind: 'segment',
+      outputPath: segmentOutputPath,
+    })
+    segmentPaths.push(segmentOutputPath)
+  }
+
+  const listPath = path.join(tempDir, 'concat-list.txt')
+  const concatCommand = buildConcatCommand(segmentPaths, listPath)
+  concatCommand.output(outputPath)
+  previews.push({
+    command: buildCommandPreview(concatCommand),
+    kind: 'concat',
+    outputPath,
+  })
+
+  return previews
 }
 
 export async function generateHighlight(
