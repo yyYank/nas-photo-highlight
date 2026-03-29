@@ -6,9 +6,18 @@ import { config } from '../config.js'
 export type ImageGroup = Map<string, string[]>
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.heic', '.webp'])
+const VIDEO_EXTS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mts', '.m2ts', '.webm'])
 
-function isImage(file: string): boolean {
+export function isImagePath(file: string): boolean {
   return IMAGE_EXTS.has(path.extname(file).toLowerCase())
+}
+
+export function isVideoPath(file: string): boolean {
+  return VIDEO_EXTS.has(path.extname(file).toLowerCase())
+}
+
+function isSupportedMedia(file: string): boolean {
+  return isImagePath(file) || isVideoPath(file)
 }
 
 export function readInputList(inputListPath: string): string[] {
@@ -18,72 +27,118 @@ export function readInputList(inputListPath: string): string[] {
     .filter(Boolean)
 }
 
-/** Recursively collect all image paths under a directory */
-function collectImages(dir: string): string[] {
+/** Recursively collect all supported media paths under a directory */
+function collectMedia(dir: string): string[] {
   const results: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      results.push(...collectImages(full))
-    } else if (entry.isFile() && isImage(entry.name)) {
+      results.push(...collectMedia(full))
+    } else if (entry.isFile() && isSupportedMedia(entry.name)) {
       results.push(full)
     }
   }
   return results
 }
 
-/** Extract date string (YYYY-MM-DD) from EXIF or fallback to file mtime */
-async function getDateKey(imagePath: string): Promise<string> {
+async function getCapturedAt(mediaPath: string): Promise<Date> {
   try {
-    const exif = await exifr.parse(imagePath, ['DateTimeOriginal'])
-    if (exif?.DateTimeOriginal) {
-      const d = new Date(exif.DateTimeOriginal)
-      return d.toISOString().slice(0, 10)
+    if (isImagePath(mediaPath)) {
+      const exif = await exifr.parse(mediaPath, ['DateTimeOriginal'])
+      if (exif?.DateTimeOriginal) {
+        return new Date(exif.DateTimeOriginal)
+      }
     }
   } catch {}
-  const mtime = statSync(imagePath).mtime
+  return statSync(mediaPath).mtime
+}
+
+/** Extract date string (YYYY-MM-DD) from EXIF or fallback to file mtime */
+async function getDateKey(mediaPath: string): Promise<string> {
+  try {
+    if (isImagePath(mediaPath)) {
+      const exif = await exifr.parse(mediaPath, ['DateTimeOriginal'])
+      if (exif?.DateTimeOriginal) {
+        const d = new Date(exif.DateTimeOriginal)
+        return d.toISOString().slice(0, 10)
+      }
+    }
+  } catch {}
+  const mtime = statSync(mediaPath).mtime
   return mtime.toISOString().slice(0, 10)
 }
 
-export async function groupListedImages(
-  imagePaths: string[],
+async function sortGroupMedia(
+  mediaPaths: string[],
+  getCapturedAtFn: (mediaPath: string) => Promise<Date>
+) {
+  const dated = await Promise.all(mediaPaths.map(async (mediaPath, index) => ({
+    mediaPath,
+    capturedAt: await getCapturedAtFn(mediaPath),
+    index,
+  })))
+
+  dated.sort((a, b) => {
+    const timeDiff = a.capturedAt.getTime() - b.capturedAt.getTime()
+    if (timeDiff !== 0) return timeDiff
+    return a.index - b.index
+  })
+
+  return dated.map((item) => item.mediaPath)
+}
+
+export async function groupListedMedia(
+  mediaPaths: string[],
   groupBy: 'date' | 'folder',
-  getDateKeyFn: (imagePath: string) => Promise<string> = getDateKey
+  getDateKeyFn: (mediaPath: string) => Promise<string> = getDateKey,
+  getCapturedAtFn: (mediaPath: string) => Promise<Date> = getCapturedAt
 ): Promise<ImageGroup> {
   const groups: ImageGroup = new Map()
 
   if (groupBy === 'folder') {
-    for (const p of imagePaths) {
+    for (const p of mediaPaths) {
       const key = path.basename(path.dirname(p))
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(p)
     }
-    return groups
+  } else {
+    for (const p of mediaPaths) {
+      const key = await getDateKeyFn(p)
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(p)
+    }
   }
 
-  for (const p of imagePaths) {
-    const key = await getDateKeyFn(p)
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(p)
+  for (const [key, groupedPaths] of groups) {
+    groups.set(key, await sortGroupMedia(groupedPaths, getCapturedAtFn))
   }
 
   return groups
 }
 
+export async function groupListedImages(
+  imagePaths: string[],
+  groupBy: 'date' | 'folder',
+  getDateKeyFn: (imagePath: string) => Promise<string> = getDateKey,
+  getCapturedAtFn: (imagePath: string) => Promise<Date> = getCapturedAt
+): Promise<ImageGroup> {
+  return groupListedMedia(imagePaths, groupBy, getDateKeyFn, getCapturedAtFn)
+}
+
 /**
- * Group images under NAS_PHOTO_PATH by date (YYYY-MM-DD) or by subfolder.
- * Returns a Map of groupKey → [imagePaths]
+ * Group supported media under NAS_PHOTO_PATH by date (YYYY-MM-DD) or by subfolder.
+ * Returns a Map of groupKey → [mediaPaths]
  */
 export async function groupImages(inputListPath?: string): Promise<ImageGroup> {
-  const allImages = inputListPath
+  const allMedia = inputListPath
     ? readInputList(inputListPath)
-    : collectImages(config.nas.photoPath)
+    : collectMedia(config.nas.photoPath)
 
   if (inputListPath) {
-    console.log(`Found ${allImages.length} images in input list ${inputListPath}`)
+    console.log(`Found ${allMedia.length} media files in input list ${inputListPath}`)
   } else {
-    console.log(`Found ${allImages.length} images in ${config.nas.photoPath}`)
+    console.log(`Found ${allMedia.length} media files in ${config.nas.photoPath}`)
   }
 
-  return groupListedImages(allImages, config.processing.groupBy)
+  return groupListedMedia(allMedia, config.processing.groupBy)
 }

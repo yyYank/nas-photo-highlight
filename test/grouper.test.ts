@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { groupListedImages, readInputList } from '../src/scanner/grouper.js'
+import { groupListedMedia, groupListedImages, isImagePath, isVideoPath, readInputList } from '../src/scanner/grouper.js'
 
 const tempDirs: string[] = []
 
@@ -36,6 +36,13 @@ describe('readInputList', () => {
 })
 
 describe('groupListedImages', () => {
+  it('画像と動画の拡張子を判定できる', () => {
+    expect(isImagePath('/Volumes/photo/a.jpg')).toBe(true)
+    expect(isVideoPath('/Volumes/photo/a.mov')).toBe(true)
+    expect(isImagePath('/Volumes/photo/a.mov')).toBe(false)
+    expect(isVideoPath('/Volumes/photo/a.txt')).toBe(false)
+  })
+
   it('folder 指定なら親フォルダ名でグループ化する', async () => {
     const groups = await groupListedImages(
       [
@@ -43,7 +50,9 @@ describe('groupListedImages', () => {
         '/Volumes/photo/trip/b.jpg',
         '/Volumes/photo/family/c.jpg',
       ],
-      'folder'
+      'folder',
+      async () => 'unused',
+      async () => new Date('2026-03-20T00:00:00.000Z')
     )
 
     expect(groups.get('trip')).toEqual([
@@ -65,7 +74,8 @@ describe('groupListedImages', () => {
         if (imagePath.endsWith('a.jpg')) return '2026-03-20'
         if (imagePath.endsWith('b.jpg')) return '2026-03-20'
         return '2026-03-21'
-      }
+      },
+      async () => new Date('2026-03-20T00:00:00.000Z')
     )
 
     expect(groups.get('2026-03-20')).toEqual([
@@ -73,5 +83,28 @@ describe('groupListedImages', () => {
       '/Volumes/photo/trip/b.jpg',
     ])
     expect(groups.get('2026-03-21')).toEqual(['/Volumes/photo/family/c.jpg'])
+  })
+
+  it('グループ内では撮影順に画像と動画を並べる', async () => {
+    const groups = await groupListedMedia(
+      [
+        '/Volumes/photo/trip/c.mov',
+        '/Volumes/photo/trip/a.jpg',
+        '/Volumes/photo/trip/b.jpg',
+      ],
+      'folder',
+      async () => 'trip',
+      async (mediaPath) => {
+        if (mediaPath.endsWith('a.jpg')) return new Date('2026-03-20T10:00:00.000Z')
+        if (mediaPath.endsWith('c.mov')) return new Date('2026-03-20T10:01:00.000Z')
+        return new Date('2026-03-20T10:02:00.000Z')
+      }
+    )
+
+    expect(groups.get('trip')).toEqual([
+      '/Volumes/photo/trip/a.jpg',
+      '/Volumes/photo/trip/c.mov',
+      '/Volumes/photo/trip/b.jpg',
+    ])
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildManifestHighlight, shouldSkipHighlightGeneration } from '../src/pipeline.js'
+import { buildHighlightSegments, buildManifestHighlight, shouldSkipHighlightGeneration } from '../src/pipeline.js'
 
 describe('shouldSkipHighlightGeneration', () => {
   it('保存先が変わらなければ既存レコードをスキップする', () => {
@@ -54,5 +54,29 @@ describe('buildManifestHighlight', () => {
       image_count: 8,
       created_at: '2026-03-27 00:22:35',
     })
+  })
+})
+
+describe('buildHighlightSegments', () => {
+  it('選ばれた画像と動画を元の順序のまま差し込む', () => {
+    const result = buildHighlightSegments(
+      [
+        '/Volumes/home/Photos/2026/03/a.jpg',
+        '/Volumes/home/Photos/2026/03/b.mov',
+        '/Volumes/home/Photos/2026/03/c.jpg',
+        '/Volumes/home/Photos/2026/03/d.mp4',
+      ],
+      [
+        '/Volumes/home/Photos/2026/03/a.jpg',
+        '/Volumes/home/Photos/2026/03/c.jpg',
+      ]
+    )
+
+    expect(result).toEqual([
+      { path: '/Volumes/home/Photos/2026/03/a.jpg', type: 'image' },
+      { path: '/Volumes/home/Photos/2026/03/b.mov', type: 'video' },
+      { path: '/Volumes/home/Photos/2026/03/c.jpg', type: 'image' },
+      { path: '/Volumes/home/Photos/2026/03/d.mp4', type: 'video' },
+    ])
   })
 })

@@ -1,8 +1,8 @@
 import path from 'path'
 import { mkdirSync, writeFileSync } from 'fs'
-import { groupImages } from './scanner/grouper.js'
+import { groupImages, isImagePath, isVideoPath } from './scanner/grouper.js'
 import { pickBestShots } from './scorer/imageScore.js'
-import { generateHighlight } from './generator/highlight.js'
+import { generateHighlight, type HighlightSegment } from './generator/highlight.js'
 import { highlightDb } from './db/index.js'
 import { config } from './config.js'
 import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from './outputPath.js'
@@ -36,6 +36,27 @@ function normalizeMediaRootPath(outputPathTemplate: string) {
   return outputPathTemplate.replace(/\/\{yyyy\}(?:\/\{mm\})?(?:\/.*)?$/, '')
 }
 
+export function buildHighlightSegments(
+  orderedMediaPaths: string[],
+  selectedImagePaths: string[]
+): HighlightSegment[] {
+  const selectedImages = new Set(selectedImagePaths)
+  const segments: HighlightSegment[] = []
+
+  for (const mediaPath of orderedMediaPaths) {
+    if (isVideoPath(mediaPath)) {
+      segments.push({ path: mediaPath, type: 'video' })
+      continue
+    }
+
+    if (isImagePath(mediaPath) && selectedImages.has(mediaPath)) {
+      segments.push({ path: mediaPath, type: 'image' })
+    }
+  }
+
+  return segments
+}
+
 export function shouldSkipHighlightGeneration({
   force,
   existingOutputPath,
@@ -58,7 +79,7 @@ export async function runPipeline({
   force?: boolean
   inputListPath?: string
 } = {}): Promise<PipelineRunSummary> {
-  console.log('🔍 Scanning photos...')
+  console.log('🔍 Scanning media...')
   const resolvedMetaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
   const resolvedOutputPath = resolveOutputPath(config.nas.outputPath)
   prepareMetaOutputPath(resolvedMetaOutputPath)
@@ -70,11 +91,14 @@ export async function runPipeline({
   let generated = 0
   const highlights: PipelineRunSummary['highlights'] = []
 
-  for (const [key, images] of groups) {
-    if (images.length < config.processing.minImagesToGenerate) {
-      console.log(`⏭  Skipping ${key} (only ${images.length} images, min: ${config.processing.minImagesToGenerate})`)
+  for (const [key, mediaPaths] of groups) {
+    if (mediaPaths.length < config.processing.minImagesToGenerate) {
+      console.log(`⏭  Skipping ${key} (only ${mediaPaths.length} media files, min: ${config.processing.minImagesToGenerate})`)
       continue
     }
+
+    const imagePaths = mediaPaths.filter(isImagePath)
+    const videoPaths = mediaPaths.filter(isVideoPath)
 
     const outputPath = path.join(resolvedOutputPath, `${key}_highlight.mp4`)
     const existingHighlight = highlightDb.find(key)
@@ -88,18 +112,23 @@ export async function runPipeline({
       continue
     }
 
-    console.log(`\n🎬 Processing: ${key} (${images.length} images)`)
+    console.log(`\n🎬 Processing: ${key} (${imagePaths.length} images, ${videoPaths.length} videos)`)
 
-    const best = await pickBestShots(images, config.processing.imagesPerHighlight)
-    console.log(`  Selected ${best.length} best shots`)
+    const bestImages = imagePaths.length > 0
+      ? await pickBestShots(imagePaths, config.processing.imagesPerHighlight)
+      : []
+    console.log(`  Selected ${bestImages.length} best shots`)
 
-    await generateHighlight(best, outputPath)
+    const segments = buildHighlightSegments(mediaPaths, bestImages)
+    console.log(`  Added ${videoPaths.length} videos, ${segments.length} total segments`)
 
-    highlightDb.upsert(key, outputPath, best.length)
+    await generateHighlight(segments, outputPath)
+
+    highlightDb.upsert(key, outputPath, bestImages.length)
     highlights.push({
       groupKey: key,
       outputPath,
-      imageCount: best.length,
+      imageCount: bestImages.length,
     })
     generated++
   }
