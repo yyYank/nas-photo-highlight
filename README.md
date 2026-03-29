@@ -17,6 +17,7 @@ NAS 上の写真や動画からハイライト動画を自動生成します。
 - **スコアリング基盤** — `ffmpeg` とローカル処理で動画フレームの focus / change / total を算出
 - **表情スコア導入** — ローカルの顔解析結果を読み込み、expression と bonus を加味したスコアリングに対応
 - **候補区間化** — 平滑化、ピーク抽出、近接マージを行い、highlight candidate JSON を出力
+- **音声ピークと評価基盤** — ローカル音声解析と候補 JSON 比較で後段チューニングを進めやすくする
 
 ---
 
@@ -67,6 +68,12 @@ bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4
 
 # ローカルの顔解析結果 JSON を使って expression / bonus も反映
 bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json
+
+# 音声ピークも反映して候補を出す
+bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json --with-audio-peaks
+
+# 複数設定の candidate JSON を比較
+bun src/cli/evaluate-highlight.ts baseline=./baseline.json tuned=./tuned.json
 
 # 直近の生成結果を通知
 bun run notify

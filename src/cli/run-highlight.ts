@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import { rm } from 'fs/promises'
 import { extractVideoFrames } from '../infra/ffmpeg.js'
+import { alignAudioPeaksToFrames, extractAudioPeaks } from '../infra/audio.js'
 import { loadFaceDetectionsFromFile, resolveFaceDetectionsForFrames } from '../infra/mediapipe.js'
 import { scoreVideoFrames } from '../core/scoring.js'
 import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, smoothFrameScores } from '../core/segment.js'
@@ -14,6 +15,7 @@ const fpsIndex = args.indexOf('--fps')
 const fps = fpsIndex >= 0 ? Number(args[fpsIndex + 1]) : 4
 const faceAnalysisIndex = args.indexOf('--face-analysis')
 const faceAnalysisPath = faceAnalysisIndex >= 0 ? args[faceAnalysisIndex + 1] : undefined
+const withAudioPeaks = args.includes('--with-audio-peaks')
 
 if (!mediaPath) {
   throw new Error('Usage: bun src/cli/run-highlight.ts /path/to/video.mp4 [--fps 4]')
@@ -30,7 +32,10 @@ try {
   const faceDetections = faceAnalysisPath
     ? resolveFaceDetectionsForFrames(frames, await loadFaceDetectionsFromFile(faceAnalysisPath))
     : undefined
-  const scores = await scoreVideoFrames(frames, { faceDetections })
+  const audioPeaks = withAudioPeaks
+    ? alignAudioPeaksToFrames(frames.map((frame) => frame.time), await extractAudioPeaks(mediaPath))
+    : undefined
+  const scores = await scoreVideoFrames(frames, { audioPeaks, faceDetections })
   const smoothed = smoothFrameScores(scores)
   const peaks = mergeNearbyPeaks(detectPeakFrames(smoothed))
   const segments = buildSegmentsFromPeaks(smoothed, peaks)
@@ -56,6 +61,7 @@ try {
 
   console.log(JSON.stringify({
     candidate,
+    withAudioPeaks,
     faceAnalysisPath,
     fps,
     frameCount: scores.length,
