@@ -66,12 +66,38 @@ describe('scoreVideoFrames', () => {
     const scores = await scoreVideoFrames([
       { path: a, time: 0, sceneChange: 0 },
       { path: b, time: 0.25, sceneChange: 0.7 },
-    ])
+    ], {
+      faceDetections: [
+        [{
+          smile: 0.2,
+          surprise: 0.1,
+          eyeOpen: 0.8,
+          mouthOpen: 0.2,
+          faceSize: 0.22,
+          centerOffset: 0.15,
+          frontalScore: 0.85,
+          detectionConfidence: 0.9,
+        }],
+        [{
+          smile: 0.9,
+          surprise: 0.1,
+          eyeOpen: 0.9,
+          mouthOpen: 0.3,
+          faceSize: 0.28,
+          centerOffset: 0.1,
+          frontalScore: 0.95,
+          detectionConfidence: 0.95,
+        }],
+      ],
+    })
 
     expect(scores).toHaveLength(2)
     expect(scores[0]?.time).toBe(0)
+    expect(scores[1]?.expression).toBeGreaterThan(scores[0]?.expression ?? 0)
+    expect(scores[1]?.bonus).toBeGreaterThan(0)
     expect(scores[1]?.change).toBeGreaterThan(scores[0]?.change ?? 0)
     expect(scores[0]?.focus).toBeGreaterThanOrEqual(0)
+    expect(scores[1]?.meta.faceCount).toBe(1)
     expect(scores[1]?.total).toBeGreaterThanOrEqual(0)
   })
 })
