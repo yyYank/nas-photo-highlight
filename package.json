@@ -10,6 +10,8 @@
     "schedule": "bun src/index.ts",
     "deploy:nas": "bun src/deploy.ts",
     "deploy:nas:dry-run": "bun src/deploy.ts --dry-run",
+    "cli:highlight": "bun src/cli/run-highlight.ts",
+    "cli:evaluate": "bun src/cli/evaluate-highlight.ts",
     "dev": "bun --watch src/index.ts",
     "score": "bun src/scorer/imageScore.ts",
     "build": "bun build src/index.ts --outdir dist",
