@@ -1,15 +1,25 @@
 import { describe, expect, it } from 'bun:test'
-import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from '../src/outputPath.js'
+import {
+  prepareMetaOutputPath,
+  prepareOutputPath,
+  resolveOutputPath,
+} from '../src/outputPath'
 
 describe('resolveOutputPath', () => {
   it('実行日で年と月のプレースホルダーを展開する', () => {
-    const resolved = resolveOutputPath('/Volumes/home/Photos/PhotoLibrary/{yyyy}/{mm}', new Date('2026-03-27T10:00:00+09:00'))
+    const resolved = resolveOutputPath(
+      '/Volumes/home/Photos/PhotoLibrary/{yyyy}/{mm}',
+      new Date('2026-03-27T10:00:00+09:00')
+    )
 
     expect(resolved).toBe('/Volumes/home/Photos/PhotoLibrary/2026/03')
   })
 
   it('プレースホルダーがなければ元のパスをそのまま返す', () => {
-    const resolved = resolveOutputPath('/Volumes/home/Photos/PhotoLibrary', new Date('2026-03-27T10:00:00+09:00'))
+    const resolved = resolveOutputPath(
+      '/Volumes/home/Photos/PhotoLibrary',
+      new Date('2026-03-27T10:00:00+09:00')
+    )
 
     expect(resolved).toBe('/Volumes/home/Photos/PhotoLibrary')
   })
@@ -26,11 +36,15 @@ describe('prepareOutputPath', () => {
           throw error
         },
       })
-    ).toThrow('NAS_OUTPUT_PATH "/Volumes/highlights" を準備できませんでした。NAS が未マウントか、書き込み権限がありません。')
+    ).toThrow(
+      'NAS_OUTPUT_PATH "/Volumes/highlights" を準備できませんでした。NAS が未マウントか、書き込み権限がありません。'
+    )
   })
 
   it('出力先が見つからない場合は分かりやすいエラーを返す', () => {
-    const error = new Error('no such file or directory') as NodeJS.ErrnoException
+    const error = new Error(
+      'no such file or directory'
+    ) as NodeJS.ErrnoException
     error.code = 'ENOENT'
 
     expect(() =>
@@ -39,7 +53,9 @@ describe('prepareOutputPath', () => {
           throw error
         },
       })
-    ).toThrow('NAS_OUTPUT_PATH "/Volumes/highlights" を準備できませんでした。NAS が未マウントか、書き込み権限がありません。')
+    ).toThrow(
+      'NAS_OUTPUT_PATH "/Volumes/highlights" を準備できませんでした。NAS が未マウントか、書き込み権限がありません。'
+    )
   })
 })
 

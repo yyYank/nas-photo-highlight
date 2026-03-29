@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'bun:test'
-import { buildHighlightSegments, buildManifestHighlight, shouldSkipHighlightGeneration } from '../src/pipeline.js'
+import {
+  buildHighlightSegments,
+  buildManifestHighlight,
+  shouldSkipHighlightGeneration,
+} from '../src/pipeline'
 
 describe('shouldSkipHighlightGeneration', () => {
   it('保存先が変わらなければ既存レコードをスキップする', () => {
     const result = shouldSkipHighlightGeneration({
       force: false,
-      existingOutputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
-      targetOutputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+      existingOutputPath:
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+      targetOutputPath:
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
     })
 
     expect(result).toBe(true)
@@ -15,8 +21,10 @@ describe('shouldSkipHighlightGeneration', () => {
   it('保存先が変わったら再生成する', () => {
     const result = shouldSkipHighlightGeneration({
       force: false,
-      existingOutputPath: '/Volumes/home/Photos/highlights/2026-03-21_highlight.mp4',
-      targetOutputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+      existingOutputPath:
+        '/Volumes/home/Photos/highlights/2026-03-21_highlight.mp4',
+      targetOutputPath:
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
     })
 
     expect(result).toBe(false)
@@ -25,8 +33,10 @@ describe('shouldSkipHighlightGeneration', () => {
   it('force 指定なら再生成する', () => {
     const result = shouldSkipHighlightGeneration({
       force: true,
-      existingOutputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
-      targetOutputPath: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+      existingOutputPath:
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+      targetOutputPath:
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
     })
 
     expect(result).toBe(false)
@@ -38,7 +48,8 @@ describe('buildManifestHighlight', () => {
     const result = buildManifestHighlight(
       {
         group_key: '2026-03-21',
-        output_path: '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
+        output_path:
+          '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4',
         image_count: 8,
         created_at: '2026-03-27 00:22:35',
         id: 1,

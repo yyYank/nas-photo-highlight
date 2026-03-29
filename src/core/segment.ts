@@ -1,4 +1,4 @@
-import type { FrameScore } from '../types/score.js'
+import type { FrameScore } from '../types/score'
 
 export interface SegmentScore {
   start: number
@@ -38,7 +38,9 @@ export function detectPeakFrames(
     if (frame.total < threshold) return false
     const previous = frames[index - 1]
     const next = frames[index + 1]
-    return frame.total >= (previous?.total ?? 0) && frame.total >= (next?.total ?? 0)
+    return (
+      frame.total >= (previous?.total ?? 0) && frame.total >= (next?.total ?? 0)
+    )
   })
 }
 
@@ -51,7 +53,7 @@ export function mergeNearbyPeaks(
   const merged: FrameScore[] = [peaks[0]]
   for (const peak of peaks.slice(1)) {
     const last = merged[merged.length - 1]!
-    if ((peak.time - last.time) <= mergeWithinSeconds) {
+    if (peak.time - last.time <= mergeWithinSeconds) {
       if (peak.total > last.total) {
         merged[merged.length - 1] = peak
       }
@@ -66,10 +68,12 @@ export function mergeNearbyPeaks(
 export function scoreSegment(frames: FrameScore[]): number {
   if (frames.length === 0) return 0
 
-  const sortedTotals = [...frames.map((frame) => frame.total)].sort((a, b) => b - a)
+  const sortedTotals = [...frames.map((frame) => frame.total)].sort(
+    (a, b) => b - a
+  )
   const topCount = Math.min(3, sortedTotals.length)
   const topAverage = average(sortedTotals.slice(0, topCount))
-  return (Math.max(...sortedTotals) * 0.6) + (topAverage * 0.4)
+  return Math.max(...sortedTotals) * 0.6 + topAverage * 0.4
 }
 
 export function buildSegmentsFromPeaks(
@@ -86,7 +90,9 @@ export function buildSegmentsFromPeaks(
   return peaks.map((peak) => {
     const start = Math.max(0, peak.time - leadSeconds)
     const end = peak.time + lagSeconds
-    const segmentFrames = frames.filter((frame) => frame.time >= start && frame.time <= end)
+    const segmentFrames = frames.filter(
+      (frame) => frame.time >= start && frame.time <= end
+    )
 
     return {
       start,

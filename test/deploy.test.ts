@@ -5,7 +5,7 @@ import {
   normalizeDeployMediaPath,
   renderNasDockerCompose,
   renderNasNginxConf,
-} from '../src/deploy.js'
+} from '../src/deploy'
 
 describe('buildNasDeployConfig', () => {
   it('必要な環境変数から NAS デプロイ設定を組み立てる', () => {
@@ -23,7 +23,9 @@ describe('buildNasDeployConfig', () => {
 
     expect(config.localPhotoPath).toBe('/Volumes/home/Photos/PhotoLibrary')
     expect(config.localMetaOutputPath).toBe('/Volumes/home/Photos/highlights')
-    expect(config.localMediaOutputPath).toBe('/Volumes/home/Photos/PhotoLibrary/{yyyy}/{mm}')
+    expect(config.localMediaOutputPath).toBe(
+      '/Volumes/home/Photos/PhotoLibrary/{yyyy}/{mm}'
+    )
     expect(config.deployHost).toBe('admin@nas.local')
     expect(config.deployDir).toBe('/volume1/docker/nas-photo-highlight')
     expect(config.deployMetaPath).toBe('/volume1/highlights')
@@ -43,11 +45,15 @@ describe('buildNasDeployConfig', () => {
 
 describe('normalizeDeployMediaPath', () => {
   it('年月テンプレートを bind mount 用のルートへ正規化する', () => {
-    expect(normalizeDeployMediaPath('/volume1/Photos/PhotoLibrary/{yyyy}/{mm}')).toBe('/volume1/Photos/PhotoLibrary')
+    expect(
+      normalizeDeployMediaPath('/volume1/Photos/PhotoLibrary/{yyyy}/{mm}')
+    ).toBe('/volume1/Photos/PhotoLibrary')
   })
 
   it('テンプレートがなければそのまま返す', () => {
-    expect(normalizeDeployMediaPath('/volume1/Photos/PhotoLibrary')).toBe('/volume1/Photos/PhotoLibrary')
+    expect(normalizeDeployMediaPath('/volume1/Photos/PhotoLibrary')).toBe(
+      '/volume1/Photos/PhotoLibrary'
+    )
   })
 })
 
@@ -67,7 +73,9 @@ describe('renderNasDockerCompose', () => {
 
     expect(text).toContain('- "8888:80"')
     expect(text).toContain('/volume1/highlights:/usr/share/nginx/meta:ro')
-    expect(text).toContain('/volume1/Photos/PhotoLibrary:/usr/share/nginx/media:ro')
+    expect(text).toContain(
+      '/volume1/Photos/PhotoLibrary:/usr/share/nginx/media:ro'
+    )
     expect(text).toContain('./nginx.conf:/etc/nginx/conf.d/default.conf:ro')
   })
 })
@@ -97,7 +105,12 @@ describe('buildRemoteDeployCommands', () => {
       deployDockerBin: '/usr/local/bin/docker',
     })
 
-    expect(commands.mkdirArgs).toEqual(['admin@nas.local', 'mkdir', '-p', '/volume1/docker/nas-photo-highlight'])
+    expect(commands.mkdirArgs).toEqual([
+      'admin@nas.local',
+      'mkdir',
+      '-p',
+      '/volume1/docker/nas-photo-highlight',
+    ])
     expect(commands.scpArgs).toEqual([
       '-O',
       'nas/generated/docker-compose.yml',

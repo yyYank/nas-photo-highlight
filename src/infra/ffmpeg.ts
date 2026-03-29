@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { readdir } from 'fs/promises'
 import path from 'path'
-import type { ExtractVideoFramesOptions, SampledFrame } from '../types/media.js'
+import type { ExtractVideoFramesOptions, SampledFrame } from '../types/media'
 
 const execFileAsync = promisify(execFile)
 
@@ -36,13 +36,17 @@ export function parseShowinfoLine(line: string) {
   }
 }
 
-export async function extractVideoFrames(options: ExtractVideoFramesOptions): Promise<SampledFrame[]> {
+export async function extractVideoFrames(
+  options: ExtractVideoFramesOptions
+): Promise<SampledFrame[]> {
   const args = buildFrameExtractionArgs(options)
   const { stderr } = await execFileAsync('ffmpeg', args)
   const frameMetadata = stderr
     .split('\n')
     .map(parseShowinfoLine)
-    .filter((line): line is { sceneChange: number, time: number } => line !== null)
+    .filter(
+      (line): line is { sceneChange: number; time: number } => line !== null
+    )
 
   const frameFiles = (await readdir(options.outputDir))
     .filter((file) => file.endsWith('.jpg'))

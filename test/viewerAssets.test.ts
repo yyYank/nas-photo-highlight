@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { syncViewerAssets } from '../src/viewerAssets.js'
+import { syncViewerAssets } from '../src/viewerAssets'
 
 const tempDirs: string[] = []
 
@@ -27,6 +27,6 @@ describe('syncViewerAssets', () => {
     const copiedHtml = readFileSync(path.join(outputDir, 'index.html'), 'utf8')
     expect(copiedHtml).toContain('PHOTO HIGHLIGHTS')
     expect(copiedHtml).toContain("fetch('/highlights.json')")
-    expect(copiedHtml).toContain("`/media/${h.relative_path}`")
+    expect(copiedHtml).toContain('`/media/${h.relative_path}`')
   })
 })

@@ -1,12 +1,20 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 import exifr from 'exifr'
-import { config } from '../config.js'
+import { config } from '../config'
 
 export type ImageGroup = Map<string, string[]>
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.heic', '.webp'])
-const VIDEO_EXTS = new Set(['.mp4', '.mov', '.m4v', '.avi', '.mts', '.m2ts', '.webm'])
+const VIDEO_EXTS = new Set([
+  '.mp4',
+  '.mov',
+  '.m4v',
+  '.avi',
+  '.mts',
+  '.m2ts',
+  '.webm',
+])
 
 export function isImagePath(file: string): boolean {
   return IMAGE_EXTS.has(path.extname(file).toLowerCase())
@@ -72,11 +80,13 @@ async function sortGroupMedia(
   mediaPaths: string[],
   getCapturedAtFn: (mediaPath: string) => Promise<Date>
 ) {
-  const dated = await Promise.all(mediaPaths.map(async (mediaPath, index) => ({
-    mediaPath,
-    capturedAt: await getCapturedAtFn(mediaPath),
-    index,
-  })))
+  const dated = await Promise.all(
+    mediaPaths.map(async (mediaPath, index) => ({
+      mediaPath,
+      capturedAt: await getCapturedAtFn(mediaPath),
+      index,
+    }))
+  )
 
   dated.sort((a, b) => {
     const timeDiff = a.capturedAt.getTime() - b.capturedAt.getTime()
@@ -135,9 +145,13 @@ export async function groupImages(inputListPath?: string): Promise<ImageGroup> {
     : collectMedia(config.nas.photoPath)
 
   if (inputListPath) {
-    console.log(`Found ${allMedia.length} media files in input list ${inputListPath}`)
+    console.log(
+      `Found ${allMedia.length} media files in input list ${inputListPath}`
+    )
   } else {
-    console.log(`Found ${allMedia.length} media files in ${config.nas.photoPath}`)
+    console.log(
+      `Found ${allMedia.length} media files in ${config.nas.photoPath}`
+    )
   }
 
   return groupListedMedia(allMedia, config.processing.groupBy)

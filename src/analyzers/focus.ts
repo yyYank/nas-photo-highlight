@@ -3,14 +3,12 @@ import sharp from 'sharp'
 const LAPLACIAN_KERNEL = {
   width: 3,
   height: 3,
-  kernel: [
-    0, 1, 0,
-    1, -4, 1,
-    0, 1, 0,
-  ],
+  kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0],
 }
 
-export async function calculateLaplacianVariance(imagePath: string): Promise<number> {
+export async function calculateLaplacianVariance(
+  imagePath: string
+): Promise<number> {
   const { data } = await sharp(imagePath)
     .grayscale()
     .convolve(LAPLACIAN_KERNEL)

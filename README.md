@@ -64,16 +64,16 @@ bun run generate
 bun run generate --input-list /path/to/input-files.txt
 
 # 動画フレームの初期スコアを JSON で確認
-bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4
+bun run cli:highlight /path/to/input.mp4 --fps 4
 
 # ローカルの顔解析結果 JSON を使って expression / bonus も反映
-bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json
+bun run cli:highlight /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json
 
 # 音声ピークも反映して候補を出す
-bun src/cli/run-highlight.ts /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json --with-audio-peaks
+bun run cli:highlight /path/to/input.mp4 --fps 4 --face-analysis /path/to/faces.json --with-audio-peaks
 
 # 複数設定の candidate JSON を比較
-bun src/cli/evaluate-highlight.ts baseline=./baseline.json tuned=./tuned.json
+bun run cli:evaluate baseline=./baseline.json tuned=./tuned.json
 
 # 直近の生成結果を通知
 bun run notify

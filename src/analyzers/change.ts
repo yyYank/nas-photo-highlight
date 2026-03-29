@@ -14,7 +14,10 @@ async function loadComparableFrame(imagePath: string, width = 160) {
   }
 }
 
-export async function calculateFrameDiff(previousPath: string, currentPath: string): Promise<number> {
+export async function calculateFrameDiff(
+  previousPath: string,
+  currentPath: string
+): Promise<number> {
   const previous = await loadComparableFrame(previousPath)
   const current = await loadComparableFrame(currentPath)
 
@@ -28,7 +31,9 @@ export async function calculateFrameDiff(previousPath: string, currentPath: stri
     for (let x = 0; x < width; x++) {
       const previousIndex = y * previous.width + x
       const currentIndex = y * current.width + x
-      diffSum += Math.abs(previous.data[previousIndex] - current.data[currentIndex])
+      diffSum += Math.abs(
+        previous.data[previousIndex] - current.data[currentIndex]
+      )
     }
   }
 
@@ -44,5 +49,5 @@ export function combineChangeScore({
   frameDiff: number
   sceneChange: number
 }) {
-  return (frameDiff * 0.5) + (sceneChange * 0.3) + (expressionDelta * 0.2)
+  return frameDiff * 0.5 + sceneChange * 0.3 + expressionDelta * 0.2
 }

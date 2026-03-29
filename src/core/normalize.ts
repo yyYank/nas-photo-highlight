@@ -33,7 +33,7 @@ export function normalizeByPercentile(
   const range = high - low
 
   if (range <= 0) {
-    return values.map((value) => value > low ? 1 : 0)
+    return values.map((value) => (value > low ? 1 : 0))
   }
 
   return values.map((value) => clamp((value - low) / range, 0, 1))

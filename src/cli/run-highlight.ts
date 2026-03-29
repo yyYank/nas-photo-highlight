@@ -2,26 +2,39 @@ import { mkdtempSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { rm } from 'fs/promises'
-import { extractVideoFrames } from '../infra/ffmpeg.js'
-import { alignAudioPeaksToFrames, extractAudioPeaks } from '../infra/audio.js'
-import { loadFaceDetectionsFromFile, resolveFaceDetectionsForFrames } from '../infra/mediapipe.js'
-import { scoreVideoFrames } from '../core/scoring.js'
-import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, smoothFrameScores } from '../core/segment.js'
-import type { HighlightCandidate } from '../types/score.js'
+import { extractVideoFrames } from '../infra/ffmpeg'
+import { alignAudioPeaksToFrames, extractAudioPeaks } from '../infra/audio'
+import {
+  loadFaceDetectionsFromFile,
+  resolveFaceDetectionsForFrames,
+} from '../infra/mediapipe'
+import { scoreVideoFrames } from '../core/scoring'
+import {
+  buildSegmentsFromPeaks,
+  detectPeakFrames,
+  mergeNearbyPeaks,
+  smoothFrameScores,
+} from '../core/segment'
+import type { HighlightCandidate } from '../types/score'
 
 const args = process.argv.slice(2)
 const mediaPath = args[0]
 const fpsIndex = args.indexOf('--fps')
 const fps = fpsIndex >= 0 ? Number(args[fpsIndex + 1]) : 4
 const faceAnalysisIndex = args.indexOf('--face-analysis')
-const faceAnalysisPath = faceAnalysisIndex >= 0 ? args[faceAnalysisIndex + 1] : undefined
+const faceAnalysisPath =
+  faceAnalysisIndex >= 0 ? args[faceAnalysisIndex + 1] : undefined
 const withAudioPeaks = args.includes('--with-audio-peaks')
 
 if (!mediaPath) {
-  throw new Error('Usage: bun src/cli/run-highlight.ts /path/to/video.mp4 [--fps 4]')
+  throw new Error(
+    'Usage: bun src/cli/run-highlight.ts /path/to/video.mp4 [--fps 4]'
+  )
 }
 
-const tempDir = mkdtempSync(path.join(os.tmpdir(), 'nas-photo-highlight-score-'))
+const tempDir = mkdtempSync(
+  path.join(os.tmpdir(), 'nas-photo-highlight-score-')
+)
 
 try {
   const frames = await extractVideoFrames({
@@ -30,10 +43,16 @@ try {
     outputDir: tempDir,
   })
   const faceDetections = faceAnalysisPath
-    ? resolveFaceDetectionsForFrames(frames, await loadFaceDetectionsFromFile(faceAnalysisPath))
+    ? resolveFaceDetectionsForFrames(
+        frames,
+        await loadFaceDetectionsFromFile(faceAnalysisPath)
+      )
     : undefined
   const audioPeaks = withAudioPeaks
-    ? alignAudioPeaksToFrames(frames.map((frame) => frame.time), await extractAudioPeaks(mediaPath))
+    ? alignAudioPeaksToFrames(
+        frames.map((frame) => frame.time),
+        await extractAudioPeaks(mediaPath)
+      )
     : undefined
   const scores = await scoreVideoFrames(frames, { audioPeaks, faceDetections })
   const smoothed = smoothFrameScores(scores)
@@ -43,7 +62,10 @@ try {
   const candidate: HighlightCandidate = {
     mediaId: path.basename(mediaPath),
     segments: segments.map((segment) => {
-      const peakFrame = segment.frames.reduce((best, frame) => frame.total > best.total ? frame : best, segment.frames[0]!)
+      const peakFrame = segment.frames.reduce(
+        (best, frame) => (frame.total > best.total ? frame : best),
+        segment.frames[0]!
+      )
       return {
         start: segment.start,
         end: segment.end,
@@ -59,15 +81,21 @@ try {
     }),
   }
 
-  console.log(JSON.stringify({
-    candidate,
-    withAudioPeaks,
-    faceAnalysisPath,
-    fps,
-    frameCount: scores.length,
-    mediaPath,
-    scores,
-  }, null, 2))
+  console.log(
+    JSON.stringify(
+      {
+        candidate,
+        withAudioPeaks,
+        faceAnalysisPath,
+        fps,
+        frameCount: scores.length,
+        mediaPath,
+        scores,
+      },
+      null,
+      2
+    )
+  )
 } finally {
   await rm(tempDir, { recursive: true, force: true })
 }

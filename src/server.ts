@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
-import { config } from './config.js'
-import { resolveOutputPath } from './outputPath.js'
+import { config } from './config'
+import { resolveOutputPath } from './outputPath'
 
 interface StaticHandlerOptions {
   metaOutputPath: string
@@ -14,14 +14,21 @@ function resolveAssetPath(outputPath: string, pathname: string): string | null {
   const absolutePath = path.resolve(outputPath, relativePath)
   const basePath = path.resolve(outputPath)
 
-  if (!absolutePath.startsWith(`${basePath}${path.sep}`) && absolutePath !== basePath) {
+  if (
+    !absolutePath.startsWith(`${basePath}${path.sep}`) &&
+    absolutePath !== basePath
+  ) {
     return null
   }
 
   return absolutePath
 }
 
-export function createStaticHandler({ metaOutputPath, mediaOutputPath, uiHtml }: StaticHandlerOptions) {
+export function createStaticHandler({
+  metaOutputPath,
+  mediaOutputPath,
+  uiHtml,
+}: StaticHandlerOptions) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
 
@@ -31,8 +38,12 @@ export function createStaticHandler({ metaOutputPath, mediaOutputPath, uiHtml }:
       })
     }
 
-    const basePath = url.pathname === '/highlights.json' ? metaOutputPath : mediaOutputPath
-    const assetPath = resolveAssetPath(basePath, decodeURIComponent(url.pathname))
+    const basePath =
+      url.pathname === '/highlights.json' ? metaOutputPath : mediaOutputPath
+    const assetPath = resolveAssetPath(
+      basePath,
+      decodeURIComponent(url.pathname)
+    )
     if (!assetPath || !existsSync(assetPath)) {
       return new Response('Not Found', { status: 404 })
     }

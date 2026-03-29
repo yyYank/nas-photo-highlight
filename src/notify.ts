@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
-import { config } from './config.js'
-import { highlightDb } from './db/index.js'
+import { config } from './config'
+import { highlightDb } from './db/index'
 
 export interface PipelineHighlightSummary {
   groupKey: string
@@ -22,12 +22,21 @@ function getLastRunPath(outputPath: string) {
   return path.join(outputPath, LAST_RUN_FILE)
 }
 
-export function saveLastRunSummary(outputPath: string, summary: PipelineRunSummary) {
-  writeFileSync(getLastRunPath(outputPath), JSON.stringify(summary, null, 2), 'utf8')
+export function saveLastRunSummary(
+  outputPath: string,
+  summary: PipelineRunSummary
+) {
+  writeFileSync(
+    getLastRunPath(outputPath),
+    JSON.stringify(summary, null, 2),
+    'utf8'
+  )
 }
 
 export function loadLastRunSummary(outputPath: string): PipelineRunSummary {
-  return JSON.parse(readFileSync(getLastRunPath(outputPath), 'utf8')) as PipelineRunSummary
+  return JSON.parse(
+    readFileSync(getLastRunPath(outputPath), 'utf8')
+  ) as PipelineRunSummary
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -70,7 +79,9 @@ export function buildNotificationMessage(
       const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
       lines.push('リンク:')
       for (const highlight of summary.highlights) {
-        lines.push(`- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`)
+        lines.push(
+          `- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`
+        )
       }
     }
   } else {
@@ -80,7 +91,9 @@ export function buildNotificationMessage(
       const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
       lines.push('最新ハイライト:')
       for (const highlight of recentHighlights) {
-        lines.push(`- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`)
+        lines.push(
+          `- ${highlight.groupKey}: ${normalizedBaseUrl}/media/${buildHighlightMediaRelativePath(highlight.outputPath)}`
+        )
       }
     }
   }
@@ -145,7 +158,9 @@ export async function sendNotification(
     }
 
     if (!sendMail && (!gmail.user || !gmail.appPassword)) {
-      throw new Error('GMAIL_FROM, GMAIL_TO, GMAIL_USER, or GMAIL_APP_PASSWORD is not set in .env')
+      throw new Error(
+        'GMAIL_FROM, GMAIL_TO, GMAIL_USER, or GMAIL_APP_PASSWORD is not set in .env'
+      )
     }
 
     const gmailSender = sendMail ?? (await createGmailSender())
@@ -165,7 +180,9 @@ export async function sendNotification(
   const response = await send(webhookUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text: buildNotificationMessage(summary, { baseUrl, recentHighlights }) }),
+    body: JSON.stringify({
+      text: buildNotificationMessage(summary, { baseUrl, recentHighlights }),
+    }),
   })
 
   if (!response.ok) {
@@ -175,10 +192,13 @@ export async function sendNotification(
 
 export async function notifyLatestRun(outputPath: string) {
   const summary = loadLastRunSummary(outputPath)
-  const recentHighlights = highlightDb.list().slice(0, 3).map((highlight) => ({
-    groupKey: highlight.group_key,
-    outputPath: highlight.output_path,
-    imageCount: highlight.image_count,
-  }))
+  const recentHighlights = highlightDb
+    .list()
+    .slice(0, 3)
+    .map((highlight) => ({
+      groupKey: highlight.group_key,
+      outputPath: highlight.output_path,
+      imageCount: highlight.image_count,
+    }))
   await sendNotification(summary, { recentHighlights })
 }

@@ -1,4 +1,4 @@
-import type { HighlightCandidate } from '../types/score.js'
+import type { HighlightCandidate } from '../types/score'
 
 export interface CandidateEvaluationSummary {
   averageScore: number
@@ -12,7 +12,10 @@ export function summarizeCandidate(
   config: string
 ): CandidateEvaluationSummary {
   const scores = candidate.segments.map((segment) => segment.score)
-  const averageScore = scores.length === 0 ? 0 : scores.reduce((sum, score) => sum + score, 0) / scores.length
+  const averageScore =
+    scores.length === 0
+      ? 0
+      : scores.reduce((sum, score) => sum + score, 0) / scores.length
 
   return {
     averageScore,
@@ -26,7 +29,8 @@ export function rankCandidateSummaries(
   summaries: CandidateEvaluationSummary[]
 ): CandidateEvaluationSummary[] {
   return [...summaries].sort((a, b) => {
-    if (b.averageScore !== a.averageScore) return b.averageScore - a.averageScore
+    if (b.averageScore !== a.averageScore)
+      return b.averageScore - a.averageScore
     if (b.topScore !== a.topScore) return b.topScore - a.topScore
     return b.segmentCount - a.segmentCount
   })
