@@ -2,6 +2,20 @@ import ffmpeg from 'fluent-ffmpeg'
 import { writeFile, unlink } from 'fs/promises'
 import { config } from '../config.js'
 
+const HIGHLIGHT_WIDTH = 1080
+const HIGHLIGHT_HEIGHT = 1920
+const HIGHLIGHT_FPS = 30
+
+export function buildHighlightVideoFilters(secondsPerImage: number): string[] {
+  return [
+    // Fill a portrait frame without letterboxing, cropping overflow from the center.
+    `scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=increase`,
+    `crop=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}`,
+    // Ken Burns: slow zoom in, reset each image (d=framerate*duration)
+    `zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=${secondsPerImage * HIGHLIGHT_FPS}:s=${HIGHLIGHT_WIDTH}x${HIGHLIGHT_HEIGHT}:fps=${HIGHLIGHT_FPS}`,
+  ]
+}
+
 /**
  * Generate a highlight movie from a list of image paths.
  * Applies Ken Burns zoom effect and optional BGM.
@@ -21,18 +35,12 @@ export function generateHighlight(
     let cmd = ffmpeg()
       .input(listPath)
       .inputOptions(['-f concat', '-safe 0'])
-      .videoFilters([
-        // Letterbox to 1920x1080
-        'scale=1920:1080:force_original_aspect_ratio=decrease',
-        'pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black',
-        // Ken Burns: slow zoom in, reset each image (d=framerate*duration)
-        `zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=${config.processing.secondsPerImage * 30}:s=1920x1080:fps=30`,
-      ])
+      .videoFilters(buildHighlightVideoFilters(config.processing.secondsPerImage))
       .videoCodec('libx264')
       .outputOptions([
         '-pix_fmt yuv420p',
         '-movflags +faststart',
-        '-r 30',
+        `-r ${HIGHLIGHT_FPS}`,
       ])
 
     if (config.bgmPath) {
