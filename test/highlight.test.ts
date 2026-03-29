@@ -1,35 +1,39 @@
 import { describe, expect, it } from 'bun:test'
 import {
-  buildHighlightFilterGraph,
-  buildHighlightVideoFilters,
+  buildConcatListContent,
+  buildImageSegmentFilters,
+  buildVideoSegmentFilters,
 } from '../src/generator/highlight'
 
-describe('buildHighlightVideoFilters', () => {
-  it('スマホ向けの縦長フレーム内で切らずに最大表示する', () => {
-    const filters = buildHighlightVideoFilters(3)
-
-    expect(filters).toEqual([
+describe('buildImageSegmentFilters', () => {
+  it('静止画セグメントを再生可能な縦動画に正規化する', () => {
+    expect(buildImageSegmentFilters(3)).toEqual([
       'scale=1080:1920:force_original_aspect_ratio=decrease',
       'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black',
       "zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=90:s=1080x1920:fps=30",
+      'setsar=1',
+      'format=yuv420p',
     ])
   })
 })
 
-describe('buildHighlightFilterGraph', () => {
-  it('画像と動画を同じ縦動画フォーマットへ正規化して連結する', () => {
-    const graph = buildHighlightFilterGraph(
-      [
-        { path: '/Volumes/photo/a.jpg', type: 'image' },
-        { path: '/Volumes/photo/b.mov', type: 'video' },
-      ],
-      3
-    )
-
-    expect(graph).toEqual([
-      "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=90:s=1080x1920:fps=30,setsar=1[v0]",
-      '[1:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,fps=30,setsar=1[v1]',
-      '[v0][v1]concat=n=2:v=1:a=0[vout]',
+describe('buildVideoSegmentFilters', () => {
+  it('動画セグメントの fps と timestamp を正規化する', () => {
+    expect(buildVideoSegmentFilters()).toEqual([
+      'scale=1080:1920:force_original_aspect_ratio=decrease',
+      'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black',
+      'fps=30',
+      'setsar=1',
+      'setpts=PTS-STARTPTS',
+      'format=yuv420p',
     ])
+  })
+})
+
+describe('buildConcatListContent', () => {
+  it('concat demuxer 用の file list を組み立てる', () => {
+    expect(
+      buildConcatListContent(['/tmp/segment-0000.mp4', "/tmp/it's-ok.mp4"])
+    ).toBe("file '/tmp/segment-0000.mp4'\nfile '/tmp/it'\\''s-ok.mp4'\n")
   })
 })
