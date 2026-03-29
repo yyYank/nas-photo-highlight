@@ -8,9 +8,9 @@ const HIGHLIGHT_FPS = 30
 
 export function buildHighlightVideoFilters(secondsPerImage: number): string[] {
   return [
-    // Fill a portrait frame without letterboxing, cropping overflow from the center.
-    `scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=increase`,
-    `crop=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}`,
+    // Keep the full image visible and scale it as large as possible inside the portrait frame.
+    `scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=decrease`,
+    `pad=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=black`,
     // Ken Burns: slow zoom in, reset each image (d=framerate*duration)
     `zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=${secondsPerImage * HIGHLIGHT_FPS}:s=${HIGHLIGHT_WIDTH}x${HIGHLIGHT_HEIGHT}:fps=${HIGHLIGHT_FPS}`,
   ]
