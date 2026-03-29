@@ -1,10 +1,14 @@
 import ffmpeg from 'fluent-ffmpeg'
-import { writeFile, unlink } from 'fs/promises'
 import { config } from '../config.js'
 
 const HIGHLIGHT_WIDTH = 1080
 const HIGHLIGHT_HEIGHT = 1920
 const HIGHLIGHT_FPS = 30
+
+export interface HighlightSegment {
+  path: string
+  type: 'image' | 'video'
+}
 
 export function buildHighlightVideoFilters(secondsPerImage: number): string[] {
   return [
@@ -16,44 +20,65 @@ export function buildHighlightVideoFilters(secondsPerImage: number): string[] {
   ]
 }
 
+export function buildHighlightFilterGraph(
+  segments: HighlightSegment[],
+  secondsPerImage: number
+): string[] {
+  const filters = segments.map((segment, index) => {
+    if (segment.type === 'image') {
+      return `[${index}:v]scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=decrease,pad=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=black,zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.001))':d=${secondsPerImage * HIGHLIGHT_FPS}:s=${HIGHLIGHT_WIDTH}x${HIGHLIGHT_HEIGHT}:fps=${HIGHLIGHT_FPS},setsar=1[v${index}]`
+    }
+
+    return `[${index}:v]scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=decrease,pad=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:(ow-iw)/2:(oh-ih)/2:color=black,fps=${HIGHLIGHT_FPS},setsar=1[v${index}]`
+  })
+
+  const concatInputs = segments.map((_, index) => `[v${index}]`).join('')
+  filters.push(`${concatInputs}concat=n=${segments.length}:v=1:a=0[vout]`)
+
+  return filters
+}
+
 /**
- * Generate a highlight movie from a list of image paths.
- * Applies Ken Burns zoom effect and optional BGM.
+ * Generate a highlight movie from image/video segments.
+ * Images use Ken Burns; videos are inserted at original duration.
  */
 export function generateHighlight(
-  imagePaths: string[],
+  segments: HighlightSegment[],
   outputPath: string
 ): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    // Write a concat list file for ffmpeg
-    const listPath = `/tmp/concat_${Date.now()}.txt`
-    const listContent = imagePaths
-      .map((p) => `file '${p.replace(/'/g, "\\'")}'\nduration ${config.processing.secondsPerImage}`)
-      .join('\n')
-    await writeFile(listPath, listContent, 'utf8')
-
     let cmd = ffmpeg()
-      .input(listPath)
-      .inputOptions(['-f concat', '-safe 0'])
-      .videoFilters(buildHighlightVideoFilters(config.processing.secondsPerImage))
-      .videoCodec('libx264')
-      .outputOptions([
-        '-pix_fmt yuv420p',
-        '-movflags +faststart',
-        `-r ${HIGHLIGHT_FPS}`,
-      ])
+
+    for (const segment of segments) {
+      cmd = cmd.input(segment.path)
+      if (segment.type === 'image') {
+        cmd = cmd.inputOptions(['-loop 1', `-t ${config.processing.secondsPerImage}`])
+      }
+    }
+
+    const filterGraph = buildHighlightFilterGraph(segments, config.processing.secondsPerImage)
+    const outputOptions = [
+      '-map [vout]',
+      '-pix_fmt yuv420p',
+      '-movflags +faststart',
+      `-r ${HIGHLIGHT_FPS}`,
+    ]
 
     if (config.bgmPath) {
+      const bgmInputIndex = segments.length
       cmd = cmd
         .input(config.bgmPath)
         .audioCodec('aac')
         .audioBitrate('192k')
-        .outputOptions(['-shortest'])
+      outputOptions.push(`-map ${bgmInputIndex}:a:0`, '-shortest')
     } else {
-      cmd = cmd.noAudio()
+      outputOptions.push('-an')
     }
 
     cmd
+      .complexFilter(filterGraph)
+      .videoCodec('libx264')
+      .outputOptions(outputOptions)
       .output(outputPath)
       .on('start', (cmdLine) => console.log(`  ffmpeg: ${cmdLine}`))
       .on('progress', (p) => {
@@ -61,11 +86,9 @@ export function generateHighlight(
       })
       .on('end', async () => {
         console.log(`\n  ✅ saved: ${outputPath}`)
-        await unlink(listPath).catch(() => {})
         resolve()
       })
       .on('error', async (err) => {
-        await unlink(listPath).catch(() => {})
         reject(err)
       })
       .run()
