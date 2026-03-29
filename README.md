@@ -60,7 +60,7 @@ cp .env.example .env
 # 手動でハイライトを生成
 bun run generate
 
-# 実際には生成せず、集約対象・画像スコア・ffmpeg 実行予定だけ確認
+# 最終動画は生成せず、集約対象・画像スコア・ffmpeg 実行予定と ffmpeg 検証実行を確認
 bun run generate --dry-run
 
 # 指定した画像一覧だけでハイライトを生成

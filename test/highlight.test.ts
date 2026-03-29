@@ -4,6 +4,7 @@ import {
   buildFinalHighlightOutputOptions,
   buildImageSegmentFilters,
   buildImageSegmentOutputOptions,
+  buildSilentAudioInputArgs,
   buildVideoSegmentFilters,
   buildVideoSegmentOutputOptions,
 } from '../src/generator/highlight'
@@ -36,13 +37,19 @@ describe('buildVideoSegmentFilters', () => {
 describe('buildImageSegmentOutputOptions', () => {
   it('静止画セグメントに無音トラックと秒数制限を付ける', () => {
     expect(buildImageSegmentOutputOptions(3)).toEqual([
-      '-map 0:v:0',
-      '-map 1:a:0',
+      '-map',
+      '0:v:0',
+      '-map',
+      '1:a:0',
       '-shortest',
-      '-t 3',
-      '-pix_fmt yuv420p',
-      '-movflags +faststart',
-      '-r 30',
+      '-t',
+      '3',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-r',
+      '30',
     ])
   })
 })
@@ -50,23 +57,33 @@ describe('buildImageSegmentOutputOptions', () => {
 describe('buildVideoSegmentOutputOptions', () => {
   it('元動画に音声があればそれを使う', () => {
     expect(buildVideoSegmentOutputOptions(true)).toEqual([
-      '-map 0:v:0',
-      '-map 0:a:0',
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
       '-shortest',
-      '-pix_fmt yuv420p',
-      '-movflags +faststart',
-      '-r 30',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-r',
+      '30',
     ])
   })
 
   it('元動画に音声がなければ無音トラックを使う', () => {
     expect(buildVideoSegmentOutputOptions(false)).toEqual([
-      '-map 0:v:0',
-      '-map 1:a:0',
+      '-map',
+      '0:v:0',
+      '-map',
+      '1:a:0',
       '-shortest',
-      '-pix_fmt yuv420p',
-      '-movflags +faststart',
-      '-r 30',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-r',
+      '30',
     ])
   })
 })
@@ -74,10 +91,25 @@ describe('buildVideoSegmentOutputOptions', () => {
 describe('buildFinalHighlightOutputOptions', () => {
   it('最終動画を 60 秒で打ち切る', () => {
     expect(buildFinalHighlightOutputOptions()).toEqual([
-      '-map 0:v:0',
-      '-map 0:a:0',
-      '-t 60',
-      '-movflags +faststart',
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
+      '-t',
+      '60',
+      '-movflags',
+      '+faststart',
+    ])
+  })
+})
+
+describe('buildSilentAudioInputArgs', () => {
+  it('lavfi を ffmpeg 引数として明示する', () => {
+    expect(buildSilentAudioInputArgs()).toEqual([
+      '-f',
+      'lavfi',
+      '-i',
+      'anullsrc=channel_layout=stereo:sample_rate=48000',
     ])
   })
 })
