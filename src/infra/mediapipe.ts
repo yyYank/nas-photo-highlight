@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises'
-import type { SampledFrame } from '../types/media.js'
-import type { FaceDetection } from '../types/score.js'
+import type { SampledFrame } from '../types/media'
+import type { FaceDetection } from '../types/score'
 
 export type FaceDetectionMap = Record<string, FaceDetection[]>
 

@@ -1,6 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import type { AudioPeakSample } from '../types/media.js'
+import type { AudioPeakSample } from '../types/media'
 
 const execFileAsync = promisify(execFile)
 

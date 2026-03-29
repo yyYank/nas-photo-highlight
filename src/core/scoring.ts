@@ -1,10 +1,10 @@
-import { calculateFrameDiff, combineChangeScore } from '../analyzers/change.js'
-import { calculateBonusScore } from '../analyzers/bonus.js'
-import { calculateExpressionScore } from '../analyzers/expression.js'
-import { calculateLaplacianVariance } from '../analyzers/focus.js'
-import { normalizeByPercentile } from './normalize.js'
-import type { SampledFrame } from '../types/media.js'
-import type { FaceDetection, FrameScore } from '../types/score.js'
+import { calculateFrameDiff, combineChangeScore } from '../analyzers/change'
+import { calculateBonusScore } from '../analyzers/bonus'
+import { calculateExpressionScore } from '../analyzers/expression'
+import { calculateLaplacianVariance } from '../analyzers/focus'
+import { normalizeByPercentile } from './normalize'
+import type { SampledFrame } from '../types/media'
+import type { FaceDetection, FrameScore } from '../types/score'
 
 export function calculateTotalScore({
   expression,

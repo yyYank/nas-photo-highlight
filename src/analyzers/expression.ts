@@ -1,5 +1,5 @@
-import { clamp } from '../core/normalize.js'
-import type { FaceDetection } from '../types/score.js'
+import { clamp } from '../core/normalize'
+import type { FaceDetection } from '../types/score'
 
 function average(values: number[]) {
   if (values.length === 0) return 0

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
-import { config } from './config.js'
-import { highlightDb } from './db/index.js'
+import { config } from './config'
+import { highlightDb } from './db/index'
 
 export interface PipelineHighlightSummary {
   groupKey: string

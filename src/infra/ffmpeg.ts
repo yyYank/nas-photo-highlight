@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { readdir } from 'fs/promises'
 import path from 'path'
-import type { ExtractVideoFramesOptions, SampledFrame } from '../types/media.js'
+import type { ExtractVideoFramesOptions, SampledFrame } from '../types/media'
 
 const execFileAsync = promisify(execFile)
 

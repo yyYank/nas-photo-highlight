@@ -1,9 +1,9 @@
 import cron from 'node-cron'
-import { validateConfig, config } from './config.js'
-import { runPipeline } from './pipeline.js'
-import { startWebServer } from './server.js'
-import { notifyLatestRun, sendNotification } from './notify.js'
-import { resolveOutputPath } from './outputPath.js'
+import { validateConfig, config } from './config'
+import { runPipeline } from './pipeline'
+import { startWebServer } from './server'
+import { notifyLatestRun, sendNotification } from './notify'
+import { resolveOutputPath } from './outputPath'
 
 validateConfig()
 

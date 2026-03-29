@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises'
-import { rankCandidateSummaries, summarizeCandidate } from '../core/evaluate.js'
-import type { HighlightCandidate } from '../types/score.js'
+import { rankCandidateSummaries, summarizeCandidate } from '../core/evaluate'
+import type { HighlightCandidate } from '../types/score'
 
 const args = process.argv.slice(2)
 

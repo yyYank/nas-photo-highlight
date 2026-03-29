@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { alignAudioPeaksToFrames, buildAudioPeakExtractionArgs, parseAudioPeakLines } from '../src/infra/audio.js'
+import { alignAudioPeaksToFrames, buildAudioPeakExtractionArgs, parseAudioPeakLines } from '../src/infra/audio'
 
 describe('buildAudioPeakExtractionArgs', () => {
   it('audio peak 抽出用の ffmpeg 引数を組み立てる', () => {

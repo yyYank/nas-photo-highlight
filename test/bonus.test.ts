@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { calculateBonusScore } from '../src/analyzers/bonus.js'
+import { calculateBonusScore } from '../src/analyzers/bonus'
 
 describe('calculateBonusScore', () => {
   it('顔サイズと中央寄り配置と正面度から補正点を作る', () => {

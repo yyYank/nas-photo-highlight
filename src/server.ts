@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
-import { config } from './config.js'
-import { resolveOutputPath } from './outputPath.js'
+import { config } from './config'
+import { resolveOutputPath } from './outputPath'
 
 interface StaticHandlerOptions {
   metaOutputPath: string

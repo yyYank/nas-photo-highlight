@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from '../src/outputPath.js'
+import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from '../src/outputPath'
 
 describe('resolveOutputPath', () => {
   it('実行日で年と月のプレースホルダーを展開する', () => {

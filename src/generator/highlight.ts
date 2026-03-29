@@ -1,5 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
-import { config } from '../config.js'
+import { config } from '../config'
 
 const HIGHLIGHT_WIDTH = 1080
 const HIGHLIGHT_HEIGHT = 1920

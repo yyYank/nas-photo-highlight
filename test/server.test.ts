@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { createStaticHandler } from '../src/server.js'
+import { createStaticHandler } from '../src/server'
 
 const tempDirs: string[] = []
 

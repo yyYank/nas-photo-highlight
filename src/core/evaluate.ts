@@ -1,4 +1,4 @@
-import type { HighlightCandidate } from '../types/score.js'
+import type { HighlightCandidate } from '../types/score'
 
 export interface CandidateEvaluationSummary {
   averageScore: number

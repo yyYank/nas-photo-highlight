@@ -7,7 +7,7 @@ import {
   loadLastRunSummary,
   saveLastRunSummary,
   sendNotification,
-} from '../src/notify.js'
+} from '../src/notify'
 
 const tempDirs: string[] = []
 

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 import exifr from 'exifr'
-import { config } from '../config.js'
+import { config } from '../config'
 
 export type ImageGroup = Map<string, string[]>
 

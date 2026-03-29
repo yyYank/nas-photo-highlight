@@ -2,12 +2,12 @@ import { mkdtempSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { rm } from 'fs/promises'
-import { extractVideoFrames } from '../infra/ffmpeg.js'
-import { alignAudioPeaksToFrames, extractAudioPeaks } from '../infra/audio.js'
-import { loadFaceDetectionsFromFile, resolveFaceDetectionsForFrames } from '../infra/mediapipe.js'
-import { scoreVideoFrames } from '../core/scoring.js'
-import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, smoothFrameScores } from '../core/segment.js'
-import type { HighlightCandidate } from '../types/score.js'
+import { extractVideoFrames } from '../infra/ffmpeg'
+import { alignAudioPeaksToFrames, extractAudioPeaks } from '../infra/audio'
+import { loadFaceDetectionsFromFile, resolveFaceDetectionsForFrames } from '../infra/mediapipe'
+import { scoreVideoFrames } from '../core/scoring'
+import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, smoothFrameScores } from '../core/segment'
+import type { HighlightCandidate } from '../types/score'
 
 const args = process.argv.slice(2)
 const mediaPath = args[0]

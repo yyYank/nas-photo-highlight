@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { groupListedMedia, groupListedImages, isImagePath, isVideoPath, readInputList } from '../src/scanner/grouper.js'
+import { groupListedMedia, groupListedImages, isImagePath, isVideoPath, readInputList } from '../src/scanner/grouper'
 
 const tempDirs: string[] = []
 

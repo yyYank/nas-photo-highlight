@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildFrameExtractionArgs, parseShowinfoLine } from '../src/infra/ffmpeg.js'
+import { buildFrameExtractionArgs, parseShowinfoLine } from '../src/infra/ffmpeg'
 
 describe('buildFrameExtractionArgs', () => {
   it('fps 抽出用の ffmpeg 引数を組み立てる', () => {

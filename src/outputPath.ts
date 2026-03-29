@@ -1,5 +1,5 @@
 import { mkdirSync } from 'fs'
-import { syncViewerAssets } from './viewerAssets.js'
+import { syncViewerAssets } from './viewerAssets'
 
 interface PrepareOutputPathOptions {
   mkdir?: (path: string) => void

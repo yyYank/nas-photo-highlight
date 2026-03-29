@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { rankCandidateSummaries, summarizeCandidate } from '../src/core/evaluate.js'
+import { rankCandidateSummaries, summarizeCandidate } from '../src/core/evaluate'
 
 describe('summarizeCandidate', () => {
   it('候補 JSON から比較用サマリを作る', () => {

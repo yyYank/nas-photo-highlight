@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import sharp from 'sharp'
-import { calculateFrameDiff, combineChangeScore } from '../src/analyzers/change.js'
+import { calculateFrameDiff, combineChangeScore } from '../src/analyzers/change'
 
 const tempDirs: string[] = []
 

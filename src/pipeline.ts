@@ -1,13 +1,13 @@
 import path from 'path'
 import { mkdirSync, writeFileSync } from 'fs'
-import { groupImages, isImagePath, isVideoPath } from './scanner/grouper.js'
-import { pickBestShots } from './scorer/imageScore.js'
-import { generateHighlight, type HighlightSegment } from './generator/highlight.js'
-import { highlightDb } from './db/index.js'
-import { config } from './config.js'
-import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from './outputPath.js'
-import { saveLastRunSummary, type PipelineRunSummary } from './notify.js'
-import type { HighlightRecord } from './db/index.js'
+import { groupImages, isImagePath, isVideoPath } from './scanner/grouper'
+import { pickBestShots } from './scorer/imageScore'
+import { generateHighlight, type HighlightSegment } from './generator/highlight'
+import { highlightDb } from './db/index'
+import { config } from './config'
+import { prepareMetaOutputPath, prepareOutputPath, resolveOutputPath } from './outputPath'
+import { saveLastRunSummary, type PipelineRunSummary } from './notify'
+import type { HighlightRecord } from './db/index'
 
 /**
  * Write highlights.json to NAS output folder.

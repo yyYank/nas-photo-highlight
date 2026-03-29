@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildHighlightFilterGraph, buildHighlightVideoFilters } from '../src/generator/highlight.js'
+import { buildHighlightFilterGraph, buildHighlightVideoFilters } from '../src/generator/highlight'
 
 describe('buildHighlightVideoFilters', () => {
   it('スマホ向けの縦長フレーム内で切らずに最大表示する', () => {

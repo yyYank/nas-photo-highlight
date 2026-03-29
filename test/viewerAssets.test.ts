@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import os from 'os'
 import path from 'path'
-import { syncViewerAssets } from '../src/viewerAssets.js'
+import { syncViewerAssets } from '../src/viewerAssets'
 
 const tempDirs: string[] = []
 

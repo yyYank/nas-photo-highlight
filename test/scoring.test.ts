@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import sharp from 'sharp'
-import { calculateTotalScore, scoreVideoFrames } from '../src/core/scoring.js'
+import { calculateTotalScore, scoreVideoFrames } from '../src/core/scoring'
 
 const tempDirs: string[] = []
 

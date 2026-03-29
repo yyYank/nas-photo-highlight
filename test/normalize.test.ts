@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { normalizeByPercentile, percentile } from '../src/core/normalize.js'
+import { normalizeByPercentile, percentile } from '../src/core/normalize'
 
 describe('percentile', () => {
   it('線形補間で percentile を計算する', () => {

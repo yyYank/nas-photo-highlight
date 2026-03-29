@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { resolveFaceDetectionsForFrames } from '../src/infra/mediapipe.js'
+import { resolveFaceDetectionsForFrames } from '../src/infra/mediapipe'
 
 describe('resolveFaceDetectionsForFrames', () => {
   it('フレームパスに対応する顔解析結果を引き当てる', () => {

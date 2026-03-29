@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildHighlightSegments, buildManifestHighlight, shouldSkipHighlightGeneration } from '../src/pipeline.js'
+import { buildHighlightSegments, buildManifestHighlight, shouldSkipHighlightGeneration } from '../src/pipeline'
 
 describe('shouldSkipHighlightGeneration', () => {
   it('保存先が変わらなければ既存レコードをスキップする', () => {

@@ -1,4 +1,4 @@
-import type { FrameScore } from '../types/score.js'
+import type { FrameScore } from '../types/score'
 
 export interface SegmentScore {
   start: number

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, scoreSegment, smoothFrameScores } from '../src/core/segment.js'
-import type { FrameScore } from '../src/types/score.js'
+import { buildSegmentsFromPeaks, detectPeakFrames, mergeNearbyPeaks, scoreSegment, smoothFrameScores } from '../src/core/segment'
+import type { FrameScore } from '../src/types/score'
 
 function frame(time: number, total: number): FrameScore {
   return {

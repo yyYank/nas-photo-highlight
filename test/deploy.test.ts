@@ -5,7 +5,7 @@ import {
   normalizeDeployMediaPath,
   renderNasDockerCompose,
   renderNasNginxConf,
-} from '../src/deploy.js'
+} from '../src/deploy'
 
 describe('buildNasDeployConfig', () => {
   it('必要な環境変数から NAS デプロイ設定を組み立てる', () => {
