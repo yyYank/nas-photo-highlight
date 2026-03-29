@@ -7,6 +7,7 @@ import { config } from '../config'
 const HIGHLIGHT_WIDTH = 1080
 const HIGHLIGHT_HEIGHT = 1920
 const HIGHLIGHT_FPS = 30
+const MAX_HIGHLIGHT_SECONDS = 60
 
 export interface HighlightSegment {
   path: string
@@ -43,6 +44,44 @@ export function buildConcatListContent(segmentPaths: string[]): string {
   return `${lines.join('\n')}\n`
 }
 
+export function buildImageSegmentOutputOptions(
+  secondsPerImage: number
+): string[] {
+  return [
+    '-map 0:v:0',
+    '-map 1:a:0',
+    '-shortest',
+    `-t ${secondsPerImage}`,
+    '-pix_fmt yuv420p',
+    '-movflags +faststart',
+    `-r ${HIGHLIGHT_FPS}`,
+  ]
+}
+
+export function buildVideoSegmentOutputOptions(
+  hasSourceAudio: boolean
+): string[] {
+  return [
+    '-map 0:v:0',
+    hasSourceAudio ? '-map 0:a:0' : '-map 1:a:0',
+    '-shortest',
+    '-pix_fmt yuv420p',
+    '-movflags +faststart',
+    `-r ${HIGHLIGHT_FPS}`,
+  ]
+}
+
+export function buildFinalHighlightOutputOptions(): string[] {
+  return [
+    '-map 0:v:0',
+    '-map 0:a:0',
+    `-t ${MAX_HIGHLIGHT_SECONDS}`,
+    '-pix_fmt yuv420p',
+    '-movflags +faststart',
+    `-r ${HIGHLIGHT_FPS}`,
+  ]
+}
+
 function runFfmpegCommand(
   command: ffmpeg.FfmpegCommand,
   outputPath: string
@@ -71,6 +110,19 @@ function runFfmpegCommand(
   })
 }
 
+function detectAudioStream(inputPath: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(inputPath, (error, metadata) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(metadata.streams.some((stream) => stream.codec_type === 'audio'))
+    })
+  })
+}
+
 async function renderSegmentClip(
   segment: HighlightSegment,
   outputPath: string
@@ -79,20 +131,38 @@ async function renderSegmentClip(
 
   if (segment.type === 'image') {
     command = command
-      .inputOptions(['-loop 1', `-t ${config.processing.secondsPerImage}`])
+      .inputOptions(['-loop 1'])
+      .input('anullsrc=channel_layout=stereo:sample_rate=48000')
+      .inputFormat('lavfi')
       .videoFilters(buildImageSegmentFilters(config.processing.secondsPerImage))
-  } else {
-    command = command.videoFilters(buildVideoSegmentFilters())
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .audioFrequency(48000)
+      .audioChannels(2)
+      .outputOptions(
+        buildImageSegmentOutputOptions(config.processing.secondsPerImage)
+      )
+
+    await runFfmpegCommand(command, outputPath)
+    return
+  }
+
+  const hasSourceAudio = await detectAudioStream(segment.path)
+
+  command = command.videoFilters(buildVideoSegmentFilters())
+
+  if (!hasSourceAudio) {
+    command = command
+      .input('anullsrc=channel_layout=stereo:sample_rate=48000')
+      .inputFormat('lavfi')
   }
 
   command = command
     .videoCodec('libx264')
-    .outputOptions([
-      '-pix_fmt yuv420p',
-      '-movflags +faststart',
-      `-r ${HIGHLIGHT_FPS}`,
-      '-an',
-    ])
+    .audioCodec('aac')
+    .audioFrequency(48000)
+    .audioChannels(2)
+    .outputOptions(buildVideoSegmentOutputOptions(hasSourceAudio))
 
   await runFfmpegCommand(command, outputPath)
 }
@@ -112,20 +182,16 @@ async function concatSegmentClips(
       .input(listPath)
       .inputOptions(['-f concat', '-safe 0'])
       .videoCodec('libx264')
-      .outputOptions([
-        '-pix_fmt yuv420p',
-        '-movflags +faststart',
-        `-r ${HIGHLIGHT_FPS}`,
-      ])
+      .audioCodec('aac')
+      .audioFrequency(48000)
+      .audioChannels(2)
+      .outputOptions(buildFinalHighlightOutputOptions())
 
     if (config.bgmPath) {
       command = command
         .input(config.bgmPath)
         .audioCodec('aac')
         .audioBitrate('192k')
-        .outputOptions(['-map 0:v:0', '-map 1:a:0', '-shortest'])
-    } else {
-      command = command.outputOptions(['-map 0:v:0', '-an'])
     }
 
     await runFfmpegCommand(command, outputPath)
