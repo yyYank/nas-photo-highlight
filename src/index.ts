@@ -4,28 +4,23 @@ import { runPipeline } from './pipeline'
 import { startWebServer } from './server'
 import { notifyLatestRun, sendNotification } from './notify'
 import { resolveOutputPath } from './outputPath'
+import { parseGenerateOptions } from './cli/generateOptions'
 
 validateConfig()
 
-const args = process.argv.slice(2)
-const inputListIndex = args.indexOf('--input-list')
-const inputListPath = inputListIndex >= 0 ? args[inputListIndex + 1] : undefined
+const options = parseGenerateOptions(process.argv.slice(2))
 
-if (inputListIndex >= 0 && !inputListPath) {
-  throw new Error(
-    'Usage: bun run generate --input-list /path/to/input-files.txt'
-  )
-}
-
-if (args.includes('--run-now')) {
+if (options.runNow) {
   // One-shot: process immediately and exit
   await runPipeline({
-    dryRun: args.includes('--dry-run'),
-    force: args.includes('--force'),
-    inputListPath,
+    dateFrom: options.dateFrom,
+    dateTo: options.dateTo,
+    dryRun: options.dryRun,
+    force: options.force,
+    inputListPath: options.inputListPath,
   })
   process.exit(0)
-} else if (args.includes('--notify')) {
+} else if (options.notify) {
   await notifyLatestRun(resolveOutputPath(config.nas.metaOutputPath))
   console.log('🔔 Notification sent')
   process.exit(0)

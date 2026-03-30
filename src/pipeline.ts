@@ -1,6 +1,11 @@
 import path from 'path'
 import { writeFileSync } from 'fs'
-import { groupImages, isImagePath, isVideoPath } from './scanner/grouper'
+import {
+  groupImages,
+  isImagePath,
+  isVideoPath,
+  type MediaDateRange,
+} from './scanner/grouper'
 import { scoreImages } from './scorer/imageScore'
 import {
   buildHighlightCommandPreviews,
@@ -125,6 +130,20 @@ export function shouldSkipHighlightGeneration({
   return existingOutputPath === targetOutputPath
 }
 
+export function normalizeDateRange({
+  dateFrom,
+  dateTo,
+}: MediaDateRange): MediaDateRange | undefined {
+  if (!dateFrom && !dateTo) {
+    return undefined
+  }
+
+  return {
+    dateFrom,
+    dateTo,
+  }
+}
+
 interface DryRunHighlightGroup {
   groupKey: string
   imagePaths: string[]
@@ -171,10 +190,14 @@ export async function runPipeline({
   force = false,
   dryRun = false,
   inputListPath,
+  dateFrom,
+  dateTo,
 }: {
   force?: boolean
   dryRun?: boolean
   inputListPath?: string
+  dateFrom?: string
+  dateTo?: string
 } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning media...')
   const resolvedMetaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
@@ -182,7 +205,11 @@ export async function runPipeline({
   prepareMetaOutputPath(resolvedMetaOutputPath)
   prepareOutputPath(resolvedOutputPath)
 
-  const groups = await groupImages(inputListPath)
+  const dateRange = normalizeDateRange({ dateFrom, dateTo })
+  const groups = await groupImages({
+    inputListPath,
+    ...dateRange,
+  })
   console.log(`📁 Found ${groups.size} groups`)
 
   let generated = 0

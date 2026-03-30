@@ -4,6 +4,10 @@ import exifr from 'exifr'
 import { config } from '../config'
 
 export type ImageGroup = Map<string, string[]>
+export interface MediaDateRange {
+  dateFrom?: string
+  dateTo?: string
+}
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.heic', '.webp'])
 const VIDEO_EXTS = new Set([
@@ -76,6 +80,32 @@ async function getDateKey(mediaPath: string): Promise<string> {
   return mtime.toISOString().slice(0, 10)
 }
 
+export async function filterMediaByDateRange(
+  mediaPaths: string[],
+  range: MediaDateRange,
+  getDateKeyFn: (mediaPath: string) => Promise<string> = getDateKey
+): Promise<string[]> {
+  if (!range.dateFrom && !range.dateTo) {
+    return mediaPaths
+  }
+
+  const filtered: string[] = []
+  for (const mediaPath of mediaPaths) {
+    const dateKey = await getDateKeyFn(mediaPath)
+    if (range.dateFrom && dateKey < range.dateFrom) {
+      continue
+    }
+
+    if (range.dateTo && dateKey > range.dateTo) {
+      continue
+    }
+
+    filtered.push(mediaPath)
+  }
+
+  return filtered
+}
+
 async function sortGroupMedia(
   mediaPaths: string[],
   getCapturedAtFn: (mediaPath: string) => Promise<Date>
@@ -139,20 +169,28 @@ export async function groupListedImages(
  * Group supported media under NAS_PHOTO_PATH by date (YYYY-MM-DD) or by subfolder.
  * Returns a Map of groupKey → [mediaPaths]
  */
-export async function groupImages(inputListPath?: string): Promise<ImageGroup> {
+export async function groupImages({
+  inputListPath,
+  dateFrom,
+  dateTo,
+}: MediaDateRange & { inputListPath?: string } = {}): Promise<ImageGroup> {
   const allMedia = inputListPath
     ? readInputList(inputListPath)
     : collectMedia(config.nas.photoPath)
+  const filteredMedia = await filterMediaByDateRange(allMedia, {
+    dateFrom,
+    dateTo,
+  })
 
   if (inputListPath) {
     console.log(
-      `Found ${allMedia.length} media files in input list ${inputListPath}`
+      `Found ${filteredMedia.length} media files in input list ${inputListPath}`
     )
   } else {
     console.log(
-      `Found ${allMedia.length} media files in ${config.nas.photoPath}`
+      `Found ${filteredMedia.length} media files in ${config.nas.photoPath}`
     )
   }
 
-  return groupListedMedia(allMedia, config.processing.groupBy)
+  return groupListedMedia(filteredMedia, config.processing.groupBy)
 }

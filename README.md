@@ -63,6 +63,12 @@ bun run generate
 # 最終動画は生成せず、集約対象・画像スコア・ffmpeg 実行予定と ffmpeg 検証実行を確認
 bun run generate --dry-run
 
+# 日付レンジを指定して対象を絞り込む
+bun run generate --run-now --from 2026-03-01 --to 2026-03-07
+
+# input-list と併用して、さらに日付レンジで絞り込む
+bun run generate --run-now --input-list /path/to/input-files.txt --from 2026-03-01
+
 # 指定した画像一覧だけでハイライトを生成
 bun run generate --input-list /path/to/input-files.txt
 
