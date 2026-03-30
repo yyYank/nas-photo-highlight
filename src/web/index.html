@@ -50,10 +50,13 @@
       }
       for (const h of highlights) {
         const url = `/media/${h.relative_path}`
+        const thumbnailUrl = h.thumbnail_relative_path
+          ? `/media/${h.thumbnail_relative_path}`
+          : url
         const card = document.createElement('div')
         card.className = 'card'
         card.innerHTML = `
-          <video src="${url}" muted loop preload="metadata"
+          <video src="${url}" poster="${thumbnailUrl}" muted loop preload="metadata"
                  onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>
           <div class="card-info">
             <div class="date">${h.group_key}</div>

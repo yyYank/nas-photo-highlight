@@ -28,5 +28,7 @@ describe('syncViewerAssets', () => {
     expect(copiedHtml).toContain('PHOTO HIGHLIGHTS')
     expect(copiedHtml).toContain("fetch('/highlights.json')")
     expect(copiedHtml).toContain('`/media/${h.relative_path}`')
+    expect(copiedHtml).toContain('h.thumbnail_relative_path')
+    expect(copiedHtml).toContain('poster="${thumbnailUrl}"')
   })
 })

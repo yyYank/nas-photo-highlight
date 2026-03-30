@@ -9,6 +9,7 @@ import {
   runHighlightDryRun,
   type HighlightSegment,
 } from './generator/highlight'
+import { generateHighlightThumbnail } from './generator/thumbnail'
 import { highlightDb } from './db/index'
 import { config } from './config'
 import {
@@ -23,15 +24,24 @@ import type { HighlightRecord } from './db/index'
  * Write highlights.json to NAS output folder.
  * This is what Nginx (on the NAS) serves as the "API".
  */
+export function buildThumbnailOutputPath(outputPath: string) {
+  return outputPath.replace(/\.[^.]+$/, '_thumb.jpg')
+}
+
 export function buildManifestHighlight(
   highlight: HighlightRecord,
   mediaRootPath: string
 ) {
+  const thumbnailPath = buildThumbnailOutputPath(highlight.output_path)
   return {
     group_key: highlight.group_key,
     filename: path.basename(highlight.output_path),
     relative_path: path
       .relative(mediaRootPath, highlight.output_path)
+      .split(path.sep)
+      .join('/'),
+    thumbnail_relative_path: path
+      .relative(mediaRootPath, thumbnailPath)
       .split(path.sep)
       .join('/'),
     image_count: highlight.image_count,
@@ -73,6 +83,31 @@ export function buildHighlightSegments(
   }
 
   return segments
+}
+
+export function selectThumbnailSegment(
+  orderedMediaPaths: string[],
+  selectedImagePaths: string[]
+): HighlightSegment | undefined {
+  const selectedImages = new Set(selectedImagePaths)
+
+  for (const mediaPath of orderedMediaPaths) {
+    if (isImagePath(mediaPath) && selectedImages.has(mediaPath)) {
+      return { path: mediaPath, type: 'image' }
+    }
+  }
+
+  const fallbackPath = orderedMediaPaths.find(
+    (mediaPath) => isImagePath(mediaPath) || isVideoPath(mediaPath)
+  )
+  if (!fallbackPath) {
+    return undefined
+  }
+
+  return {
+    path: fallbackPath,
+    type: isVideoPath(fallbackPath) ? 'video' : 'image',
+  }
 }
 
 export function shouldSkipHighlightGeneration({
@@ -192,6 +227,7 @@ export async function runPipeline({
     console.log(`  Selected ${bestImages.length} best shots`)
 
     const segments = buildHighlightSegments(mediaPaths, bestImages)
+    const thumbnailSegment = selectThumbnailSegment(mediaPaths, bestImages)
     console.log(
       `  Added ${videoPaths.length} videos, ${segments.length} total segments`
     )
@@ -221,6 +257,12 @@ export async function runPipeline({
     }
 
     await generateHighlight(segments, outputPath)
+    if (thumbnailSegment) {
+      await generateHighlightThumbnail(
+        thumbnailSegment,
+        buildThumbnailOutputPath(outputPath)
+      )
+    }
 
     highlightDb.upsert(key, outputPath, bestImages.length)
     highlights.push({

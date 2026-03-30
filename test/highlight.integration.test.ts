@@ -9,6 +9,7 @@ import {
   readFile,
   rm,
   stat,
+  utimes,
   writeFile,
 } from 'fs/promises'
 import path from 'path'
@@ -294,6 +295,7 @@ describe('highlight integration', () => {
         const outputDir = path.join(workDir, 'out')
         const metaDir = path.join(workDir, 'meta')
         const fakeHeicPath = path.join(workDir, 'image-c.heic')
+        const pipelineInputDir = path.join(workDir, 'pipeline-input')
 
         processingConfig.secondsPerImage = 1
         processingConfig.imagesPerHighlight = 2
@@ -306,6 +308,7 @@ describe('highlight integration', () => {
 
         await mkdir(outputDir, { recursive: true })
         await mkdir(metaDir, { recursive: true })
+        await mkdir(pipelineInputDir, { recursive: true })
 
         await createImage(imageAPath, { r: 220, g: 120, b: 40 })
         await createImage(imageBPath, { r: 40, g: 160, b: 220 })
@@ -316,6 +319,35 @@ describe('highlight integration', () => {
         await writeFile(fakeHeicPath, await readFile(imageBPath))
         await writeFile(brokenVideoPath, 'not-an-mp4', 'utf8')
         await writeFile(faceAnalysisPath, '{}', 'utf8')
+        await utimes(
+          imageAPath,
+          new Date('2026-03-01T09:00:00.000Z'),
+          new Date('2026-03-01T09:00:00.000Z')
+        )
+        await utimes(
+          fakeHeicPath,
+          new Date('2026-03-02T09:00:00.000Z'),
+          new Date('2026-03-02T09:00:00.000Z')
+        )
+        await utimes(
+          audioVideoPath,
+          new Date('2026-03-03T09:00:00.000Z'),
+          new Date('2026-03-03T09:00:00.000Z')
+        )
+        const pipelineImagePath = path.join(pipelineInputDir, 'thumb-a.png')
+        const pipelineVideoPath = path.join(pipelineInputDir, 'thumb-b.mp4')
+        await createImage(pipelineImagePath, { r: 120, g: 220, b: 40 })
+        await createSampleVideo(mediaEnv.ffmpegBin, pipelineVideoPath, true)
+        await utimes(
+          pipelineImagePath,
+          new Date('2026-03-04T09:00:00.000Z'),
+          new Date('2026-03-04T09:00:00.000Z')
+        )
+        await utimes(
+          pipelineVideoPath,
+          new Date('2026-03-04T09:01:00.000Z'),
+          new Date('2026-03-04T09:01:00.000Z')
+        )
 
         const mixedOutputPath = path.join(workDir, 'highlight-mixed.mp4')
         const silentOutputPath = path.join(workDir, 'highlight-silent.mp4')
@@ -492,6 +524,42 @@ describe('highlight integration', () => {
 
         const generatedFiles = await readdir(outputDir)
         expect(generatedFiles.some((file) => file.endsWith('.mp4'))).toBe(false)
+
+        const pipelineInputListPath = path.join(
+          workDir,
+          'pipeline-input-list.txt'
+        )
+        await writeFile(
+          pipelineInputListPath,
+          [pipelineImagePath, pipelineVideoPath].join('\n'),
+          'utf8'
+        )
+        const generatedSummary = await runPipeline({
+          force: true,
+          inputListPath: pipelineInputListPath,
+        })
+        expect(generatedSummary.generated).toBeGreaterThan(0)
+        const thumbnailPath = path.join(
+          outputDir,
+          '2026-03-04_highlight_thumb.jpg'
+        )
+        expect(await fileExists(thumbnailPath)).toBe(true)
+        expect((await stat(thumbnailPath)).size).toBeGreaterThan(0)
+
+        const manifest = JSON.parse(
+          await readFile(path.join(metaDir, 'highlights.json'), 'utf8')
+        ) as Array<{
+          group_key: string
+          relative_path: string
+          thumbnail_relative_path: string
+        }>
+        const thumbnailEntry = manifest.find(
+          (entry) => entry.group_key === '2026-03-04'
+        )
+        expect(thumbnailEntry?.relative_path).toBe('2026-03-04_highlight.mp4')
+        expect(thumbnailEntry?.thumbnail_relative_path).toBe(
+          '2026-03-04_highlight_thumb.jpg'
+        )
       } finally {
         mutableConfig.bgmPath = originalConfig.bgmPath
         processingConfig.groupBy = originalConfig.groupBy
