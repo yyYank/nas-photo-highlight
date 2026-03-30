@@ -32,6 +32,14 @@ function isSupportedMedia(file: string): boolean {
   return isImagePath(file) || isVideoPath(file)
 }
 
+function isGeneratedArtifactPath(file: string): boolean {
+  const normalized = path.basename(file).toLowerCase()
+  return (
+    normalized.endsWith('_highlight.mp4') ||
+    normalized.endsWith('_highlight_thumb.jpg')
+  )
+}
+
 export function readInputList(inputListPath: string): string[] {
   return readFileSync(inputListPath, 'utf8')
     .split('\n')
@@ -40,13 +48,17 @@ export function readInputList(inputListPath: string): string[] {
 }
 
 /** Recursively collect all supported media paths under a directory */
-function collectMedia(dir: string): string[] {
+export function collectMedia(dir: string): string[] {
   const results: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
       results.push(...collectMedia(full))
-    } else if (entry.isFile() && isSupportedMedia(entry.name)) {
+    } else if (
+      entry.isFile() &&
+      isSupportedMedia(entry.name) &&
+      !isGeneratedArtifactPath(entry.name)
+    ) {
       results.push(full)
     }
   }
