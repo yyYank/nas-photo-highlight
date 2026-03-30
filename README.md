@@ -72,6 +72,8 @@ bun run generate --run-now --input-list /path/to/input-files.txt --from 2026-03-
 # 指定した画像一覧だけでハイライトを生成
 bun run generate --input-list /path/to/input-files.txt
 
+# 生成後は highlights.json にサムネイル情報も出るので、viewer の一覧カードで使える
+
 # 動画フレームの初期スコアを JSON で確認
 bun run cli:highlight /path/to/input.mp4 --fps 4
 

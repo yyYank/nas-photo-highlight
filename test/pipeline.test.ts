@@ -2,7 +2,9 @@ import { describe, expect, it } from 'bun:test'
 import {
   buildHighlightSegments,
   buildManifestHighlight,
+  buildThumbnailOutputPath,
   normalizeDateRange,
+  selectThumbnailSegment,
   shouldSkipHighlightGeneration,
 } from '../src/pipeline'
 
@@ -45,7 +47,7 @@ describe('shouldSkipHighlightGeneration', () => {
 })
 
 describe('buildManifestHighlight', () => {
-  it('動画出力ルートからの相対パスを manifest に含める', () => {
+  it('動画とサムネイルの相対パスを manifest に含める', () => {
     const result = buildManifestHighlight(
       {
         group_key: '2026-03-21',
@@ -63,9 +65,22 @@ describe('buildManifestHighlight', () => {
       group_key: '2026-03-21',
       filename: '2026-03-21_highlight.mp4',
       relative_path: '2026/03/2026-03-21_highlight.mp4',
+      thumbnail_relative_path: '2026/03/2026-03-21_highlight_thumb.jpg',
       image_count: 8,
       created_at: '2026-03-27 00:22:35',
     })
+  })
+})
+
+describe('buildThumbnailOutputPath', () => {
+  it('動画パスからサムネイル jpg パスを作る', () => {
+    expect(
+      buildThumbnailOutputPath(
+        '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight.mp4'
+      )
+    ).toBe(
+      '/Volumes/home/Photos/PhotoLibrary/2026/03/2026-03-21_highlight_thumb.jpg'
+    )
   })
 })
 
@@ -108,5 +123,32 @@ describe('normalizeDateRange', () => {
 
   it('どちらも無ければ undefined を返す', () => {
     expect(normalizeDateRange({})).toBeUndefined()
+  })
+})
+
+describe('selectThumbnailSegment', () => {
+  it('選ばれたベストショット画像をサムネイルに使う', () => {
+    expect(
+      selectThumbnailSegment(
+        [
+          '/Volumes/home/Photos/2026/03/a.jpg',
+          '/Volumes/home/Photos/2026/03/b.mov',
+          '/Volumes/home/Photos/2026/03/c.jpg',
+        ],
+        ['/Volumes/home/Photos/2026/03/c.jpg']
+      )
+    ).toEqual({
+      path: '/Volumes/home/Photos/2026/03/c.jpg',
+      type: 'image',
+    })
+  })
+
+  it('画像が無ければ先頭メディアをサムネイルに使う', () => {
+    expect(
+      selectThumbnailSegment(['/Volumes/home/Photos/2026/03/b.mov'], [])
+    ).toEqual({
+      path: '/Volumes/home/Photos/2026/03/b.mov',
+      type: 'video',
+    })
   })
 })
