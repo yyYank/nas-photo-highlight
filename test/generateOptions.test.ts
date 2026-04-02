@@ -17,6 +17,7 @@ describe('parseGenerateOptions', () => {
       dateFrom: '2026-03-01',
       dateTo: '2026-03-07',
       dryRun: true,
+      ffmpegThrottleMs: 5000,
       force: true,
       inputListPath: undefined,
       notify: false,
@@ -52,10 +53,41 @@ describe('parseGenerateOptions', () => {
       dateFrom: '2026-03-01',
       dateTo: undefined,
       dryRun: false,
+      ffmpegThrottleMs: 5000,
       force: false,
       inputListPath: '/tmp/input-list.txt',
       notify: false,
       runNow: true,
     })
+  })
+
+  it('ffmpeg throttle ms を解釈する', () => {
+    expect(
+      parseGenerateOptions([
+        '--run-now',
+        '--force',
+        '--ffmpeg-throttle-ms',
+        '1500',
+      ])
+    ).toEqual({
+      dateFrom: undefined,
+      dateTo: undefined,
+      dryRun: false,
+      ffmpegThrottleMs: 1500,
+      force: true,
+      inputListPath: undefined,
+      notify: false,
+      runNow: true,
+    })
+  })
+
+  it('ffmpeg throttle ms が負数なら失敗する', () => {
+    expect(() =>
+      parseGenerateOptions(['--ffmpeg-throttle-ms', '-1'])
+    ).toThrow('--ffmpeg-throttle-ms must be a non-negative integer')
+  })
+
+  it('ffmpeg throttle ms を省略したらデフォルト値を使う', () => {
+    expect(parseGenerateOptions(['--run-now']).ffmpegThrottleMs).toBe(5000)
   })
 })

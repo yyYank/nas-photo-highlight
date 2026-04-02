@@ -16,6 +16,7 @@ if (options.runNow) {
     dateFrom: options.dateFrom,
     dateTo: options.dateTo,
     dryRun: options.dryRun,
+    ffmpegThrottleMs: options.ffmpegThrottleMs,
     force: options.force,
     inputListPath: options.inputListPath,
   })

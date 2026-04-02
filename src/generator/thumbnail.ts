@@ -3,7 +3,7 @@ import { rm } from 'fs/promises'
 import { promisify } from 'util'
 import sharp from 'sharp'
 import { resolveFfmpegBin } from '../infra/ffmpegBinary'
-import type { HighlightSegment } from './highlight'
+import { buildFfmpegThreadArgs, type HighlightSegment } from './highlight'
 
 const execFileAsync = promisify(execFile)
 
@@ -40,6 +40,7 @@ export async function generateHighlightThumbnail(
         '-loglevel',
         'error',
         '-y',
+        ...buildFfmpegThreadArgs(),
         '-ss',
         '0',
         '-i',

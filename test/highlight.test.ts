@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  buildFfmpegThreadArgs,
   buildConcatListContent,
   buildFinalHighlightOutputOptions,
   buildImageSegmentFilters,
@@ -7,6 +8,7 @@ import {
   buildSilentAudioInputArgs,
   buildVideoSegmentFilters,
   buildVideoSegmentOutputOptions,
+  shouldThrottleAfterFfmpegRun,
 } from '../src/generator/highlight'
 
 describe('buildImageSegmentFilters', () => {
@@ -114,10 +116,28 @@ describe('buildSilentAudioInputArgs', () => {
   })
 })
 
+describe('buildFfmpegThreadArgs', () => {
+  it('ffmpeg を単スレッドで動かす', () => {
+    expect(buildFfmpegThreadArgs()).toEqual(['-threads', '1'])
+  })
+})
+
 describe('buildConcatListContent', () => {
   it('concat demuxer 用の file list を組み立てる', () => {
     expect(
       buildConcatListContent(['/tmp/segment-0000.mp4', "/tmp/it's-ok.mp4"])
     ).toBe("file '/tmp/segment-0000.mp4'\nfile '/tmp/it'\\''s-ok.mp4'\n")
+  })
+})
+
+describe('shouldThrottleAfterFfmpegRun', () => {
+  it('待機時間が 0 より大きければ最終工程以外で待機する', () => {
+    expect(shouldThrottleAfterFfmpegRun(0, 3, 1500)).toBe(true)
+    expect(shouldThrottleAfterFfmpegRun(1, 3, 1500)).toBe(true)
+    expect(shouldThrottleAfterFfmpegRun(2, 3, 1500)).toBe(false)
+  })
+
+  it('待機時間が 0 なら待機しない', () => {
+    expect(shouldThrottleAfterFfmpegRun(0, 3, 0)).toBe(false)
   })
 })

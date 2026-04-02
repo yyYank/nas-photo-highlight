@@ -29,6 +29,10 @@ export interface HighlightDryRunResult {
   commands: HighlightCommandPreview[]
 }
 
+export interface HighlightGenerationOptions {
+  ffmpegThrottleMs?: number
+}
+
 export function buildImageSegmentFilters(secondsPerImage: number): string[] {
   return [
     `scale=${HIGHLIGHT_WIDTH}:${HIGHLIGHT_HEIGHT}:force_original_aspect_ratio=decrease`,
@@ -119,6 +123,18 @@ export function buildSilentAudioInputArgs(): string[] {
   ]
 }
 
+export function buildFfmpegThreadArgs(): string[] {
+  return ['-threads', '1']
+}
+
+export function shouldThrottleAfterFfmpegRun(
+  completedRuns: number,
+  totalRuns: number,
+  ffmpegThrottleMs = 0
+): boolean {
+  return ffmpegThrottleMs > 0 && completedRuns + 1 < totalRuns
+}
+
 function quoteCommandArg(arg: string): string {
   if (/^[A-Za-z0-9_./:=+-]+$/.test(arg)) {
     return arg
@@ -150,6 +166,15 @@ async function runFfmpeg(args: string[], outputPath: string): Promise<void> {
   }
 }
 
+async function sleepBetweenFfmpegRuns(ffmpegThrottleMs = 0): Promise<void> {
+  if (ffmpegThrottleMs <= 0) {
+    return
+  }
+
+  console.log(`  ⏸️  throttling for ${ffmpegThrottleMs}ms`)
+  await Bun.sleep(ffmpegThrottleMs)
+}
+
 async function detectAudioStream(inputPath: string): Promise<boolean> {
   const { stdout } = await execFileAsync(
     resolveFfprobeBin(),
@@ -176,7 +201,13 @@ async function buildSegmentArgs(
   segment: HighlightSegment,
   outputPath: string
 ): Promise<string[]> {
-  const args = ['-hide_banner', '-loglevel', 'info', '-y']
+  const args = [
+    '-hide_banner',
+    '-loglevel',
+    'info',
+    '-y',
+    ...buildFfmpegThreadArgs(),
+  ]
 
   if (segment.type === 'image') {
     args.push('-loop', '1', '-i', segment.path, ...buildSilentAudioInputArgs())
@@ -231,6 +262,7 @@ function buildConcatArgs(
     '-loglevel',
     'info',
     '-y',
+    ...buildFfmpegThreadArgs(),
     '-f',
     'concat',
     '-safe',
@@ -335,7 +367,8 @@ export async function buildHighlightCommandPreviews(
 
 export async function runHighlightDryRun(
   segments: HighlightSegment[],
-  outputPath: string
+  outputPath: string,
+  options: HighlightGenerationOptions = {}
 ): Promise<HighlightDryRunResult> {
   const tempDir = await mkdtemp(
     path.join(os.tmpdir(), 'nas-photo-highlight-dry-run-')
@@ -358,6 +391,15 @@ export async function runHighlightDryRun(
       })
       await runFfmpeg(args, segmentOutputPath)
       renderedSegmentPaths.push(segmentOutputPath)
+      if (
+        shouldThrottleAfterFfmpegRun(
+          index,
+          segments.length + 1,
+          options.ffmpegThrottleMs
+        )
+      ) {
+        await sleepBetweenFfmpegRuns(options.ffmpegThrottleMs)
+      }
     }
 
     const listPath = path.join(tempDir, 'concat-list.txt')
@@ -383,7 +425,8 @@ export async function runHighlightDryRun(
 
 export async function generateHighlight(
   segments: HighlightSegment[],
-  outputPath: string
+  outputPath: string,
+  options: HighlightGenerationOptions = {}
 ): Promise<void> {
   const tempDir = await mkdtemp(
     path.join(os.tmpdir(), 'nas-photo-highlight-render-')
@@ -400,6 +443,15 @@ export async function generateHighlight(
       const args = await buildSegmentArgs(segment, segmentOutputPath)
       await runFfmpeg(args, segmentOutputPath)
       renderedSegmentPaths.push(segmentOutputPath)
+      if (
+        shouldThrottleAfterFfmpegRun(
+          index,
+          segments.length + 1,
+          options.ffmpegThrottleMs
+        )
+      ) {
+        await sleepBetweenFfmpegRuns(options.ffmpegThrottleMs)
+      }
     }
 
     await concatSegmentClips(renderedSegmentPaths, tempDir, outputPath)

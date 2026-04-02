@@ -98,6 +98,9 @@ bun run deploy:nas
 
 # 既存ハイライトを強制再生成
 bun run generate:force
+
+# デフォルトで各工程の合間に 5 秒待ち、ffmpeg も単スレッドで動く。さらに安全側に寄せるなら上書き
+bun run generate:force --from 2026-03-26 --to 2026-03-31 --ffmpeg-throttle-ms 5000
 ```
 
 Web UI は `http://localhost:8888`（またはこのマシンの LAN IP）で利用できます。

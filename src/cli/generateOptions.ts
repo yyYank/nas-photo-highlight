@@ -1,7 +1,10 @@
+export const DEFAULT_FFMPEG_THROTTLE_MS = 5000
+
 export interface GenerateOptions {
   dateFrom?: string
   dateTo?: string
   dryRun: boolean
+  ffmpegThrottleMs?: number
   force: boolean
   inputListPath?: string
   notify: boolean
@@ -18,6 +21,17 @@ function validateDateArg(flag: '--from' | '--to', value?: string) {
   }
 }
 
+function parseNonNegativeIntegerArg(
+  flag: '--ffmpeg-throttle-ms',
+  value?: string
+): number {
+  if (!value || !/^\d+$/.test(value)) {
+    throw new Error(`${flag} must be a non-negative integer`)
+  }
+
+  return Number.parseInt(value, 10)
+}
+
 export function parseGenerateOptions(args: string[]): GenerateOptions {
   const inputListIndex = args.indexOf('--input-list')
   const inputListPath =
@@ -26,6 +40,14 @@ export function parseGenerateOptions(args: string[]): GenerateOptions {
   const dateFrom = fromIndex >= 0 ? args[fromIndex + 1] : undefined
   const toIndex = args.indexOf('--to')
   const dateTo = toIndex >= 0 ? args[toIndex + 1] : undefined
+  const throttleIndex = args.indexOf('--ffmpeg-throttle-ms')
+  const ffmpegThrottleMs =
+    throttleIndex >= 0
+      ? parseNonNegativeIntegerArg(
+          '--ffmpeg-throttle-ms',
+          args[throttleIndex + 1]
+        )
+      : DEFAULT_FFMPEG_THROTTLE_MS
 
   if (inputListIndex >= 0 && !inputListPath) {
     throw new Error(
@@ -44,6 +66,7 @@ export function parseGenerateOptions(args: string[]): GenerateOptions {
     dateFrom,
     dateTo,
     dryRun: args.includes('--dry-run'),
+    ffmpegThrottleMs,
     force: args.includes('--force'),
     inputListPath,
     notify: args.includes('--notify'),

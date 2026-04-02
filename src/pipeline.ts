@@ -189,12 +189,14 @@ function printDryRunGroup(group: DryRunHighlightGroup) {
 export async function runPipeline({
   force = false,
   dryRun = false,
+  ffmpegThrottleMs,
   inputListPath,
   dateFrom,
   dateTo,
 }: {
   force?: boolean
   dryRun?: boolean
+  ffmpegThrottleMs?: number
   inputListPath?: string
   dateFrom?: string
   dateTo?: string
@@ -266,7 +268,8 @@ export async function runPipeline({
       )
       const { commands: ffmpegCommands } = await runHighlightDryRun(
         segments,
-        outputPath
+        outputPath,
+        { ffmpegThrottleMs }
       )
       printDryRunGroup({
         ffmpegCommands:
@@ -283,7 +286,7 @@ export async function runPipeline({
       continue
     }
 
-    await generateHighlight(segments, outputPath)
+    await generateHighlight(segments, outputPath, { ffmpegThrottleMs })
     if (thumbnailSegment) {
       await generateHighlightThumbnail(
         thumbnailSegment,
