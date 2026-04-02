@@ -268,9 +268,10 @@ describe('highlight integration', () => {
         outputPath: string
         photoPath: string
       }
-      const mutableConfig = config as { bgmPath: string }
+      const mutableConfig = config as { bgmPath: string; bgmVolume: number }
       const originalConfig = {
         bgmPath: config.bgmPath,
+        bgmVolume: config.bgmVolume,
         groupBy: config.processing.groupBy,
         imagesPerHighlight: config.processing.imagesPerHighlight,
         metaOutputPath: config.nas.metaOutputPath,
@@ -305,6 +306,7 @@ describe('highlight integration', () => {
         nasConfig.outputPath = outputDir
         nasConfig.metaOutputPath = metaDir
         mutableConfig.bgmPath = ''
+        mutableConfig.bgmVolume = 0.7
 
         await mkdir(outputDir, { recursive: true })
         await mkdir(metaDir, { recursive: true })
@@ -424,7 +426,9 @@ describe('highlight integration', () => {
         expect(await fileExists(dryRunOutputPath)).toBe(false)
         expect(
           dryRunResult.commands.some((command) =>
-            command.command.includes('amix=inputs=2:duration=first')
+            command.command.includes(
+              '[1:a]volume=0.7[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]'
+            )
           )
         ).toBe(true)
 
@@ -586,6 +590,7 @@ describe('highlight integration', () => {
         )
       } finally {
         mutableConfig.bgmPath = originalConfig.bgmPath
+        mutableConfig.bgmVolume = originalConfig.bgmVolume
         processingConfig.groupBy = originalConfig.groupBy
         processingConfig.imagesPerHighlight = originalConfig.imagesPerHighlight
         processingConfig.minImagesToGenerate =

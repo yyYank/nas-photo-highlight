@@ -145,6 +145,7 @@ src/
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
 | `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
+| `BGM_VOLUME` | `0.7` | BGM 音量の倍率。`1.0` で等倍、`0.7` で 30% ダウン |
 | `NOTIFY_PROVIDER` | `gmail` | `webhook` または `gmail` |
 | `BASE_URL` | _(empty)_ | 通知文に含めるハイライト動画のベース URL |
 | `NOTIFY_WEBHOOK_URL` | _(empty)_ | 直近の生成結果を送る webhook URL |

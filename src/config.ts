@@ -12,6 +12,7 @@ export const config = {
     minImagesToGenerate: Number(process.env.MIN_IMAGES_TO_GENERATE ?? 5),
   },
   bgmPath: process.env.BGM_PATH ?? '',
+  bgmVolume: Number(process.env.BGM_VOLUME ?? 0.7),
   notification: {
     provider: (process.env.NOTIFY_PROVIDER ?? 'webhook') as 'webhook' | 'gmail',
     baseUrl: process.env.BASE_URL ?? '',

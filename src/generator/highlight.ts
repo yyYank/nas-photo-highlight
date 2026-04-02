@@ -127,6 +127,10 @@ export function buildFfmpegThreadArgs(): string[] {
   return ['-threads', '1']
 }
 
+export function buildBgmMixFilter(bgmVolume: number): string {
+  return `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
+}
+
 export function buildStagedOutputPath(
   tempDir: string,
   outputPath: string
@@ -320,7 +324,7 @@ function buildConcatArgs(
     args.push('-i', config.bgmPath)
     args.push(
       '-filter_complex',
-      '[0:a][1:a]amix=inputs=2:duration=first[aout]',
+      buildBgmMixFilter(config.bgmVolume),
       '-map',
       '0:v:0',
       '-map',

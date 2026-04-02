@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  buildBgmMixFilter,
   buildFfmpegThreadArgs,
   buildConcatListContent,
   buildCachedSegmentSourcePath,
@@ -121,6 +122,14 @@ describe('buildSilentAudioInputArgs', () => {
 describe('buildFfmpegThreadArgs', () => {
   it('ffmpeg を単スレッドで動かす', () => {
     expect(buildFfmpegThreadArgs()).toEqual(['-threads', '1'])
+  })
+})
+
+describe('buildBgmMixFilter', () => {
+  it('BGM を 30% 下げてから本編音声と mix する', () => {
+    expect(buildBgmMixFilter(0.7)).toBe(
+      '[1:a]volume=0.7[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]'
+    )
   })
 })
 
