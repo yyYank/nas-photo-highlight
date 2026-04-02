@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'bun:test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import {
+  collectMedia,
   filterMediaByDateRange,
   groupListedMedia,
   groupListedImages,
@@ -139,5 +140,35 @@ describe('groupListedImages', () => {
       '/Volumes/photo/trip/b.jpg',
       '/Volumes/photo/trip/c.mov',
     ])
+  })
+})
+
+describe('collectMedia', () => {
+  it('生成済みハイライト動画とサムネイルを入力スキャンから除外する', () => {
+    const dir = makeDir()
+    const originalsDir = path.join(dir, '2026', '03')
+    mkdirSync(originalsDir, { recursive: true })
+
+    const originalImage = path.join(originalsDir, 'IMG_0001.JPG')
+    const originalVideo = path.join(originalsDir, 'IMG_0002.MOV')
+    const generatedHighlight = path.join(
+      originalsDir,
+      '2026-03-21_highlight.mp4'
+    )
+    const generatedThumbnail = path.join(
+      originalsDir,
+      '2026-03-21_highlight_thumb.jpg'
+    )
+
+    for (const filePath of [
+      originalImage,
+      originalVideo,
+      generatedHighlight,
+      generatedThumbnail,
+    ]) {
+      writeFileSync(filePath, '')
+    }
+
+    expect(collectMedia(dir)).toEqual([originalImage, originalVideo])
   })
 })
