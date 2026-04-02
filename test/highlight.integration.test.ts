@@ -426,7 +426,7 @@ describe('highlight integration', () => {
         expect(await fileExists(dryRunOutputPath)).toBe(false)
         expect(
           dryRunResult.commands.some((command) =>
-            command.command.includes('volume=0.35:enable=') &&
+            command.command.includes('volume=0.28:enable=') &&
             command.command.includes('between(t,1,2.2)')
           )
         ).toBe(true)

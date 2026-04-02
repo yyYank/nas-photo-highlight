@@ -134,7 +134,7 @@ describe('buildBgmMixFilter', () => {
         { start: 12.5, end: 18 },
       ])
     ).toBe(
-      "[1:a]volume=0.7[bgm0];[bgm0]volume=0.35:enable='between(t,3,8.2)+between(t,12.5,18)'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]"
+      "[1:a]volume=0.7[bgm0];[bgm0]volume=0.28:enable='between(t,3,8.2)+between(t,12.5,18)'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]"
     )
   })
 })

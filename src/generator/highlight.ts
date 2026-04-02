@@ -13,7 +13,7 @@ const HIGHLIGHT_HEIGHT = 1920
 const HIGHLIGHT_FPS = 30
 const HIGHLIGHT_AUDIO_RATE = 48000
 const MAX_HIGHLIGHT_SECONDS = 60
-const VIDEO_BGM_MULTIPLIER = 0.5
+const VIDEO_BGM_MULTIPLIER = 0.4
 
 export interface HighlightSegment {
   path: string
@@ -165,7 +165,9 @@ export function buildBgmMixFilter(
     return `${baseLabel}${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
   }
 
-  const reducedVolume = bgmVolume * VIDEO_BGM_MULTIPLIER
+  const reducedVolume = Number(
+    (bgmVolume * VIDEO_BGM_MULTIPLIER).toFixed(3)
+  )
   const enableExpression = videoRanges
     .map((range) => `between(t,${range.start},${range.end})`)
     .join('+')
