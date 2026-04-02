@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   buildBgmMixFilter,
+  buildVideoBgmVolumeRanges,
   buildFfmpegThreadArgs,
   buildConcatListContent,
   buildCachedSegmentSourcePath,
@@ -127,9 +128,30 @@ describe('buildFfmpegThreadArgs', () => {
 
 describe('buildBgmMixFilter', () => {
   it('BGM を 30% 下げてから本編音声と mix する', () => {
-    expect(buildBgmMixFilter(0.7)).toBe(
-      '[1:a]volume=0.7[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]'
+    expect(
+      buildBgmMixFilter(0.7, [
+        { start: 3, end: 8.2 },
+        { start: 12.5, end: 18 },
+      ])
+    ).toBe(
+      "[1:a]volume=0.7[bgm0];[bgm0]volume=0.35:enable='between(t,3,8.2)+between(t,12.5,18)'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]"
     )
+  })
+})
+
+describe('buildVideoBgmVolumeRanges', () => {
+  it('動画セグメント区間だけ BGM をさらに下げる範囲を作る', () => {
+    expect(
+      buildVideoBgmVolumeRanges([
+        { durationSeconds: 3, type: 'image' },
+        { durationSeconds: 5.2, type: 'video' },
+        { durationSeconds: 4.3, type: 'image' },
+        { durationSeconds: 2.5, type: 'video' },
+      ])
+    ).toEqual([
+      { start: 3, end: 8.2 },
+      { start: 12.5, end: 15 },
+    ])
   })
 })
 

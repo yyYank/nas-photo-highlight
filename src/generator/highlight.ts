@@ -13,6 +13,7 @@ const HIGHLIGHT_HEIGHT = 1920
 const HIGHLIGHT_FPS = 30
 const HIGHLIGHT_AUDIO_RATE = 48000
 const MAX_HIGHLIGHT_SECONDS = 60
+const VIDEO_BGM_MULTIPLIER = 0.5
 
 export interface HighlightSegment {
   path: string
@@ -31,6 +32,17 @@ export interface HighlightDryRunResult {
 
 export interface HighlightGenerationOptions {
   ffmpegThrottleMs?: number
+}
+
+interface RenderedSegmentClip {
+  durationSeconds: number
+  path: string
+  type: HighlightSegment['type']
+}
+
+interface TimeRange {
+  end: number
+  start: number
 }
 
 export function buildImageSegmentFilters(secondsPerImage: number): string[] {
@@ -127,8 +139,38 @@ export function buildFfmpegThreadArgs(): string[] {
   return ['-threads', '1']
 }
 
-export function buildBgmMixFilter(bgmVolume: number): string {
-  return `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
+export function buildVideoBgmVolumeRanges(
+  clips: Array<Pick<RenderedSegmentClip, 'durationSeconds' | 'type'>>
+): TimeRange[] {
+  let offset = 0
+
+  return clips.flatMap((clip) => {
+    const start = offset
+    offset += clip.durationSeconds
+
+    if (clip.type !== 'video') {
+      return []
+    }
+
+    return [{ start, end: offset }]
+  })
+}
+
+export function buildBgmMixFilter(
+  bgmVolume: number,
+  videoRanges: TimeRange[]
+): string {
+  const baseLabel = '[1:a]volume='
+  if (videoRanges.length === 0) {
+    return `${baseLabel}${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
+  }
+
+  const reducedVolume = bgmVolume * VIDEO_BGM_MULTIPLIER
+  const enableExpression = videoRanges
+    .map((range) => `between(t,${range.start},${range.end})`)
+    .join('+')
+
+  return `${baseLabel}${bgmVolume}[bgm0];[bgm0]volume=${reducedVolume}:enable='${enableExpression}'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
 }
 
 export function buildStagedOutputPath(
@@ -246,6 +288,29 @@ async function detectAudioStream(inputPath: string): Promise<boolean> {
     .some((line) => line.trim().toLowerCase() === 'audio')
 }
 
+async function detectMediaDurationSeconds(inputPath: string): Promise<number> {
+  const { stdout } = await execFileAsync(
+    resolveFfprobeBin(),
+    [
+      '-v',
+      'error',
+      '-show_entries',
+      'format=duration',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      inputPath,
+    ],
+    { maxBuffer: 1024 * 1024 * 10 }
+  )
+
+  const duration = Number.parseFloat(stdout.trim())
+  if (!Number.isFinite(duration) || duration <= 0) {
+    throw new Error(`failed to detect media duration: ${inputPath}`)
+  }
+
+  return duration
+}
+
 async function buildSegmentArgs(
   segment: HighlightSegment,
   outputPath: string
@@ -304,7 +369,8 @@ async function buildSegmentArgs(
 function buildConcatArgs(
   listPath: string,
   outputPath: string,
-  dryRun: boolean
+  dryRun: boolean,
+  renderedClips: RenderedSegmentClip[] = []
 ): string[] {
   const args = [
     '-hide_banner',
@@ -324,7 +390,10 @@ function buildConcatArgs(
     args.push('-i', config.bgmPath)
     args.push(
       '-filter_complex',
-      buildBgmMixFilter(config.bgmVolume),
+      buildBgmMixFilter(
+        config.bgmVolume,
+        buildVideoBgmVolumeRanges(renderedClips)
+      ),
       '-map',
       '0:v:0',
       '-map',
@@ -368,17 +437,21 @@ function buildConcatArgs(
 }
 
 async function concatSegmentClips(
-  segmentPaths: string[],
+  renderedClips: RenderedSegmentClip[],
   tempDir: string,
   outputPath: string
 ): Promise<void> {
   const listPath = path.join(tempDir, 'concat-list.txt')
   const stagedOutputPath = buildStagedOutputPath(tempDir, outputPath)
-  await writeFile(listPath, buildConcatListContent(segmentPaths), 'utf8')
+  await writeFile(
+    listPath,
+    buildConcatListContent(renderedClips.map((clip) => clip.path)),
+    'utf8'
+  )
 
   try {
     await runFfmpeg(
-      buildConcatArgs(listPath, stagedOutputPath, false),
+      buildConcatArgs(listPath, stagedOutputPath, false, renderedClips),
       stagedOutputPath
     )
     await promoteStagedFile(stagedOutputPath, outputPath)
@@ -395,7 +468,7 @@ export async function buildHighlightCommandPreviews(
 ): Promise<HighlightCommandPreview[]> {
   const tempDir = path.join(os.tmpdir(), 'nas-photo-highlight-render-preview')
   const previews: HighlightCommandPreview[] = []
-  const segmentPaths: string[] = []
+  const renderedClips: RenderedSegmentClip[] = []
 
   for (const [index, segment] of segments.entries()) {
     const segmentOutputPath = path.join(
@@ -408,12 +481,21 @@ export async function buildHighlightCommandPreviews(
       kind: 'segment',
       outputPath: segmentOutputPath,
     })
-    segmentPaths.push(segmentOutputPath)
+    renderedClips.push({
+      durationSeconds:
+        segment.type === 'image'
+          ? config.processing.secondsPerImage
+          : await detectMediaDurationSeconds(segment.path),
+      path: segmentOutputPath,
+      type: segment.type,
+    })
   }
 
   const listPath = path.join(tempDir, 'concat-list.txt')
   previews.push({
-    command: buildCommandPreview(buildConcatArgs(listPath, outputPath, false)),
+    command: buildCommandPreview(
+      buildConcatArgs(listPath, outputPath, false, renderedClips)
+    ),
     kind: 'concat',
     outputPath,
   })
@@ -432,7 +514,7 @@ export async function runHighlightDryRun(
 
   try {
     const commands: HighlightCommandPreview[] = []
-    const renderedSegmentPaths: string[] = []
+    const renderedClips: RenderedSegmentClip[] = []
 
     for (const [index, segment] of segments.entries()) {
       const cachedSegment = await cacheSegmentSource(segment, tempDir, index)
@@ -447,7 +529,11 @@ export async function runHighlightDryRun(
         outputPath: segmentOutputPath,
       })
       await runFfmpeg(args, segmentOutputPath)
-      renderedSegmentPaths.push(segmentOutputPath)
+      renderedClips.push({
+        durationSeconds: await detectMediaDurationSeconds(segmentOutputPath),
+        path: segmentOutputPath,
+        type: segment.type,
+      })
       if (
         shouldThrottleAfterFfmpegRun(
           index,
@@ -462,11 +548,11 @@ export async function runHighlightDryRun(
     const listPath = path.join(tempDir, 'concat-list.txt')
     await writeFile(
       listPath,
-      buildConcatListContent(renderedSegmentPaths),
+      buildConcatListContent(renderedClips.map((clip) => clip.path)),
       'utf8'
     )
 
-    const verifyArgs = buildConcatArgs(listPath, '-', true)
+    const verifyArgs = buildConcatArgs(listPath, '-', true, renderedClips)
     commands.push({
       command: buildCommandPreview(verifyArgs),
       kind: 'concat',
@@ -490,7 +576,7 @@ export async function generateHighlight(
   )
 
   try {
-    const renderedSegmentPaths: string[] = []
+    const renderedClips: RenderedSegmentClip[] = []
 
     for (const [index, segment] of segments.entries()) {
       const cachedSegment = await cacheSegmentSource(segment, tempDir, index)
@@ -500,7 +586,11 @@ export async function generateHighlight(
       )
       const args = await buildSegmentArgs(cachedSegment, segmentOutputPath)
       await runFfmpeg(args, segmentOutputPath)
-      renderedSegmentPaths.push(segmentOutputPath)
+      renderedClips.push({
+        durationSeconds: await detectMediaDurationSeconds(segmentOutputPath),
+        path: segmentOutputPath,
+        type: segment.type,
+      })
       if (
         shouldThrottleAfterFfmpegRun(
           index,
@@ -512,7 +602,7 @@ export async function generateHighlight(
       }
     }
 
-    await concatSegmentClips(renderedSegmentPaths, tempDir, outputPath)
+    await concatSegmentClips(renderedClips, tempDir, outputPath)
   } finally {
     await rm(tempDir, { recursive: true, force: true })
   }
