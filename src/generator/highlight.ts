@@ -1,5 +1,5 @@
 import { execFile } from 'child_process'
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { copyFile, mkdtemp, rename, rm, writeFile } from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
@@ -127,6 +127,24 @@ export function buildFfmpegThreadArgs(): string[] {
   return ['-threads', '1']
 }
 
+export function buildStagedOutputPath(
+  tempDir: string,
+  outputPath: string
+): string {
+  return path.join(tempDir, path.basename(outputPath))
+}
+
+export function buildCachedSegmentSourcePath(
+  tempDir: string,
+  index: number,
+  sourcePath: string
+): string {
+  return path.join(
+    tempDir,
+    `source-${String(index).padStart(4, '0')}-${path.basename(sourcePath)}`
+  )
+}
+
 export function shouldThrottleAfterFfmpegRun(
   completedRuns: number,
   totalRuns: number,
@@ -173,6 +191,33 @@ async function sleepBetweenFfmpegRuns(ffmpegThrottleMs = 0): Promise<void> {
 
   console.log(`  ⏸️  throttling for ${ffmpegThrottleMs}ms`)
   await Bun.sleep(ffmpegThrottleMs)
+}
+
+async function promoteStagedFile(
+  stagedPath: string,
+  outputPath: string
+): Promise<void> {
+  const tmpOutputPath = `${outputPath}.part`
+
+  try {
+    await rm(tmpOutputPath, { force: true })
+    await copyFile(stagedPath, tmpOutputPath)
+    await rename(tmpOutputPath, outputPath)
+  } catch (error) {
+    await rm(tmpOutputPath, { force: true }).catch(() => undefined)
+    throw error
+  }
+}
+
+async function cacheSegmentSource(
+  segment: HighlightSegment,
+  tempDir: string,
+  index: number
+): Promise<HighlightSegment> {
+  const cachedPath = buildCachedSegmentSourcePath(tempDir, index, segment.path)
+  console.log(`  📥 caching source locally: ${segment.path}`)
+  await copyFile(segment.path, cachedPath)
+  return { ...segment, path: cachedPath }
 }
 
 async function detectAudioStream(inputPath: string): Promise<boolean> {
@@ -324,12 +369,19 @@ async function concatSegmentClips(
   outputPath: string
 ): Promise<void> {
   const listPath = path.join(tempDir, 'concat-list.txt')
+  const stagedOutputPath = buildStagedOutputPath(tempDir, outputPath)
   await writeFile(listPath, buildConcatListContent(segmentPaths), 'utf8')
 
   try {
-    await runFfmpeg(buildConcatArgs(listPath, outputPath, false), outputPath)
+    await runFfmpeg(
+      buildConcatArgs(listPath, stagedOutputPath, false),
+      stagedOutputPath
+    )
+    await promoteStagedFile(stagedOutputPath, outputPath)
+    console.log(`  ✅ promoted to NAS: ${outputPath}`)
   } finally {
     await rm(listPath, { force: true })
+    await rm(stagedOutputPath, { force: true }).catch(() => undefined)
   }
 }
 
@@ -379,11 +431,12 @@ export async function runHighlightDryRun(
     const renderedSegmentPaths: string[] = []
 
     for (const [index, segment] of segments.entries()) {
+      const cachedSegment = await cacheSegmentSource(segment, tempDir, index)
       const segmentOutputPath = path.join(
         tempDir,
         `segment-${String(index).padStart(4, '0')}.mp4`
       )
-      const args = await buildSegmentArgs(segment, segmentOutputPath)
+      const args = await buildSegmentArgs(cachedSegment, segmentOutputPath)
       commands.push({
         command: buildCommandPreview(args),
         kind: 'segment',
@@ -436,11 +489,12 @@ export async function generateHighlight(
     const renderedSegmentPaths: string[] = []
 
     for (const [index, segment] of segments.entries()) {
+      const cachedSegment = await cacheSegmentSource(segment, tempDir, index)
       const segmentOutputPath = path.join(
         tempDir,
         `segment-${String(index).padStart(4, '0')}.mp4`
       )
-      const args = await buildSegmentArgs(segment, segmentOutputPath)
+      const args = await buildSegmentArgs(cachedSegment, segmentOutputPath)
       await runFfmpeg(args, segmentOutputPath)
       renderedSegmentPaths.push(segmentOutputPath)
       if (

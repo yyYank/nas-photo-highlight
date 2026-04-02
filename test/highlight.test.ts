@@ -2,9 +2,11 @@ import { describe, expect, it } from 'bun:test'
 import {
   buildFfmpegThreadArgs,
   buildConcatListContent,
+  buildCachedSegmentSourcePath,
   buildFinalHighlightOutputOptions,
   buildImageSegmentFilters,
   buildImageSegmentOutputOptions,
+  buildStagedOutputPath,
   buildSilentAudioInputArgs,
   buildVideoSegmentFilters,
   buildVideoSegmentOutputOptions,
@@ -127,6 +129,31 @@ describe('buildConcatListContent', () => {
     expect(
       buildConcatListContent(['/tmp/segment-0000.mp4', "/tmp/it's-ok.mp4"])
     ).toBe("file '/tmp/segment-0000.mp4'\nfile '/tmp/it'\\''s-ok.mp4'\n")
+  })
+})
+
+describe('buildStagedOutputPath', () => {
+  it('最終成果物と同名の一時ファイルをローカル temp に作る', () => {
+    expect(
+      buildStagedOutputPath(
+        '/private/var/folders/tmp/render-1234',
+        '/Volumes/NAS/highlights/2026-03-31_highlight.mp4'
+      )
+    ).toBe('/private/var/folders/tmp/render-1234/2026-03-31_highlight.mp4')
+  })
+})
+
+describe('buildCachedSegmentSourcePath', () => {
+  it('元メディアをローカル temp に退避するパスを作る', () => {
+    expect(
+      buildCachedSegmentSourcePath(
+        '/private/var/folders/tmp/render-1234',
+        7,
+        '/Volumes/NAS/photo/PXL_20260329_025227801.jpg'
+      )
+    ).toBe(
+      '/private/var/folders/tmp/render-1234/source-0007-PXL_20260329_025227801.jpg'
+    )
   })
 })
 
