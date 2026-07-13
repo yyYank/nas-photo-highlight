@@ -163,6 +163,7 @@ src/
 | `NAS_DEPLOY_META_PATH` | _(empty)_ | NAS 上で `index.html` / `highlights.json` / `last-run.json` を読む bind mount 元 |
 | `NAS_DEPLOY_MEDIA_PATH` | _(empty)_ | NAS 上でハイライト動画（`NAS_OUTPUT_PATH` の実体）を読む bind mount 元。`{yyyy}` / `{mm}` を含む場合は配信ルートへ正規化 |
 | `NAS_DEPLOY_PORT` | `8888` | NAS 上で公開する HTTP ポート |
+| `NAS_DEPLOY_TLS_PORT` | `8443` | `nas/generated/certs/` に証明書がある場合に NAS 上で公開する HTTPS ポート |
 | `NAS_DEPLOY_DOCKER_BIN` | `docker` | 非対話 `ssh` で使う Docker CLI パス。Synology では `/usr/local/bin/docker` のことがある |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
 
@@ -182,6 +183,27 @@ src/
 - `NAS_OUTPUT_PATH` は `NAS_PHOTO_PATH`（入力の写真ライブラリ）配下に置かないでください。生成物を入力ライブラリと混在させないよう、たとえば `.../highlights/media/{yyyy}/{mm}` のように別ルートへ分離することを推奨します
 - Docker bind mount には使えないので、NAS 側の実パスは `NAS_DEPLOY_META_PATH` / `NAS_DEPLOY_MEDIA_PATH` で別に指定します
 - まず `bun run deploy:nas:dry-run` で実行予定コマンドを確認してください
+
+### HTTPS (mkcert) セットアップ
+
+Android Chrome を secure context にする（Web Share API / PWA の前提）ために、`mkcert` の自己署名 CA で NAS を HTTPS 化できます。
+
+```bash
+# 1. mkcert をインストール（未導入の場合）
+brew install mkcert
+
+# 2. ローカル CA を一度だけ登録
+mkcert -install
+
+# 3. LAN IP 向けの証明書を生成して nas/generated/certs/ に配置
+./nas/setup-https.sh
+
+# 4. 証明書ごと NAS へデプロイ（8443 番ポートで HTTPS が有効になる）
+bun run deploy:nas:dry-run
+bun run deploy:nas
+```
+
+Android 端末側は `mkcert -CAROOT` で表示されるディレクトリの `rootCA.pem` を転送し、設定 > セキュリティ > 暗号化と認証情報 > CA証明書をインストール から取り込んでください。証明書が `nas/generated/certs/` に無い場合、HTTP:8888 の動線のみで動作します（TLS は自動スキップ）。
 
 ---
 

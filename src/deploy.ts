@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import path from 'path'
 
 export interface NasDeployConfig {
@@ -10,6 +10,7 @@ export interface NasDeployConfig {
   deployMetaPath: string
   deployMediaPath: string
   deployPort: number
+  deployTlsPort: number
   deployDockerBin: string
 }
 
@@ -42,13 +43,32 @@ export function buildNasDeployConfig(
       requiredEnv(env, 'NAS_DEPLOY_MEDIA_PATH')
     ),
     deployPort: Number(env.NAS_DEPLOY_PORT ?? '8888'),
+    deployTlsPort: Number(env.NAS_DEPLOY_TLS_PORT ?? '8443'),
     deployDockerBin: env.NAS_DEPLOY_DOCKER_BIN?.trim() || 'docker',
   }
 }
 
-export function renderNasNginxConf(): string {
+export function hasGeneratedCerts(
+  certsDir = path.join('nas', 'generated', 'certs')
+): boolean {
+  return (
+    existsSync(path.join(certsDir, 'cert.pem')) &&
+    existsSync(path.join(certsDir, 'key.pem'))
+  )
+}
+
+export function renderNasNginxConf(tlsEnabled = false): string {
+  const tlsListen = tlsEnabled
+    ? `
+    listen 443 ssl;
+
+    ssl_certificate /etc/nginx/certs/cert.pem;
+    ssl_certificate_key /etc/nginx/certs/key.pem;
+`
+    : ''
+
   return `server {
-    listen 80;
+    listen 80;${tlsListen}
 
     root /usr/share/nginx/meta;
     index index.html;
@@ -56,6 +76,11 @@ export function renderNasNginxConf(): string {
     location = /highlights.json {
         add_header Cache-Control "no-cache";
         add_header Access-Control-Allow-Origin "*";
+    }
+
+    location /api/ {
+        proxy_pass http://api:8899/api/;
+        proxy_set_header Host $host;
     }
 
     location / {
@@ -72,34 +97,80 @@ export function renderNasNginxConf(): string {
 `
 }
 
-export function renderNasDockerCompose(config: NasDeployConfig): string {
+export function renderNasDockerCompose(
+  config: NasDeployConfig,
+  tlsEnabled = false
+): string {
+  const tlsPort = tlsEnabled
+    ? `
+      - "${config.deployTlsPort}:443"`
+    : ''
+  const tlsVolume = tlsEnabled
+    ? `
+      - ./certs:/etc/nginx/certs:ro`
+    : ''
+
   return `services:
   web:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "${config.deployPort}:80"
+      - "${config.deployPort}:80"${tlsPort}
     volumes:
       - ${config.deployMetaPath}:/usr/share/nginx/meta:ro
       - ${config.deployMediaPath}:/usr/share/nginx/media:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro${tlsVolume}
+    depends_on:
+      - api
+
+  # 削除API（非表示のみ）: highlights.json からの除去と deleted-keys.json
+  # への記録を行う。meta ディレクトリだけ rw でマウントする。
+  api:
+    image: oven/bun:alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ${config.deployMetaPath}:/meta
+      - ./api:/app/api:ro
+    environment:
+      META_DIR: /meta
+      PORT: "8899"
+    command: ["bun", "run", "api/server.ts"]
 `
 }
 
-export function buildRemoteDeployCommands(config: NasDeployConfig) {
+export function buildRemoteDeployCommands(
+  config: NasDeployConfig,
+  tlsEnabled = false
+) {
   const remoteComposePath = path.posix.join(
     config.deployDir,
     'docker-compose.yml'
   )
+  const remoteCertsDir = path.posix.join(config.deployDir, 'certs')
 
   return {
-    mkdirArgs: [config.deployHost, 'mkdir', '-p', config.deployDir],
+    mkdirArgs: [
+      config.deployHost,
+      'mkdir',
+      '-p',
+      config.deployDir,
+      ...(tlsEnabled ? [remoteCertsDir] : []),
+    ],
     scpArgs: [
       '-O',
       path.posix.join('nas', 'generated', 'docker-compose.yml'),
       path.posix.join('nas', 'generated', 'nginx.conf'),
       `${config.deployHost}:${config.deployDir}/`,
     ],
+    scpCertsArgs: tlsEnabled
+      ? [
+          '-O',
+          path.posix.join('nas', 'generated', 'certs', 'cert.pem'),
+          path.posix.join('nas', 'generated', 'certs', 'key.pem'),
+          `${config.deployHost}:${remoteCertsDir}/`,
+        ]
+      : null,
     composeArgs: [
       config.deployHost,
       config.deployDockerBin,
@@ -120,13 +191,20 @@ export function writeNasDeployFiles(
 
   const dockerComposePath = path.join(outputDir, 'docker-compose.yml')
   const nginxConfPath = path.join(outputDir, 'nginx.conf')
+  // nas/setup-https.sh で生成した証明書がある場合だけ TLS 設定を含める
+  const tlsEnabled = hasGeneratedCerts(path.join(outputDir, 'certs'))
 
-  writeFileSync(dockerComposePath, renderNasDockerCompose(config), 'utf8')
-  writeFileSync(nginxConfPath, renderNasNginxConf(), 'utf8')
+  writeFileSync(
+    dockerComposePath,
+    renderNasDockerCompose(config, tlsEnabled),
+    'utf8'
+  )
+  writeFileSync(nginxConfPath, renderNasNginxConf(tlsEnabled), 'utf8')
 
   return {
     dockerComposePath,
     nginxConfPath,
+    tlsEnabled,
   }
 }
 
@@ -146,11 +224,14 @@ async function runCommand(command: string, args: string[]) {
 }
 
 export async function deployNas(config: NasDeployConfig) {
-  writeNasDeployFiles(config)
-  const commands = buildRemoteDeployCommands(config)
+  const { tlsEnabled } = writeNasDeployFiles(config)
+  const commands = buildRemoteDeployCommands(config, tlsEnabled)
 
   await runCommand('ssh', commands.mkdirArgs)
   await runCommand('scp', commands.scpArgs)
+  if (commands.scpCertsArgs) {
+    await runCommand('scp', commands.scpCertsArgs)
+  }
   await runCommand('ssh', commands.composeArgs)
 }
 
@@ -158,7 +239,7 @@ const args = process.argv.slice(2)
 
 if (import.meta.main) {
   const config = buildNasDeployConfig(process.env)
-  writeNasDeployFiles(config)
+  const { tlsEnabled } = writeNasDeployFiles(config)
 
   if (args.includes('--write-only')) {
     console.log(
@@ -168,12 +249,15 @@ if (import.meta.main) {
   }
 
   if (args.includes('--dry-run')) {
-    const commands = buildRemoteDeployCommands(config)
+    const commands = buildRemoteDeployCommands(config, tlsEnabled)
     console.log(
       'Generated nas/generated/docker-compose.yml and nas/generated/nginx.conf'
     )
     console.log(`ssh ${commands.mkdirArgs.join(' ')}`)
     console.log(`scp ${commands.scpArgs.join(' ')}`)
+    if (commands.scpCertsArgs) {
+      console.log(`scp ${commands.scpCertsArgs.join(' ')}`)
+    }
     console.log(`ssh ${commands.composeArgs.join(' ')}`)
     process.exit(0)
   }
