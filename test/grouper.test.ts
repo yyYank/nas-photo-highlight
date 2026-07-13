@@ -4,6 +4,8 @@ import os from 'os'
 import path from 'path'
 import {
   collectMedia,
+  collectMediaFromRoots,
+  parsePhotoPaths,
   filterMediaByDateRange,
   groupListedMedia,
   groupListedImages,
@@ -248,6 +250,39 @@ describe('collectMedia', () => {
     }
 
     expect(collectMedia(dir)).toEqual([originalImage, originalVideo])
+  })
+})
+
+describe('複数パスのスキャンと重複除去', () => {
+  it('カンマ区切りの NAS_PHOTO_PATH を個々のパスに分割する（空白・空要素は除去）', () => {
+    expect(
+      parsePhotoPaths('/Volumes/a, /Volumes/b/c d/e ,,')
+    ).toEqual(['/Volumes/a', '/Volumes/b/c d/e'])
+  })
+
+  it('複数ルートを統合スキャンし、ファイル名＋サイズが一致する重複は先頭パス優先で1つにする', () => {
+    const rootA = makeDir()
+    const rootB = makeDir()
+    // 同名・同サイズ → 重複。rootA 側だけが残る
+    writeFileSync(path.join(rootA, 'dup.jpg'), 'abc', 'utf8')
+    writeFileSync(path.join(rootB, 'dup.jpg'), 'xyz', 'utf8')
+    // rootB にしか無い → 残る
+    writeFileSync(path.join(rootB, 'only-b.jpg'), 'b', 'utf8')
+    // 同名でもサイズが違う → 別ファイルとして両方残る
+    writeFileSync(path.join(rootA, 'same-name.jpg'), 'long-content', 'utf8')
+    writeFileSync(path.join(rootB, 'same-name.jpg'), 'x', 'utf8')
+
+    const results = collectMediaFromRoots([rootA, rootB])
+
+    // ディレクトリ内の列挙順はOS依存のため、順序ではなく集合として検証する
+    expect(results.slice().sort()).toEqual(
+      [
+        path.join(rootA, 'dup.jpg'),
+        path.join(rootA, 'same-name.jpg'),
+        path.join(rootB, 'only-b.jpg'),
+        path.join(rootB, 'same-name.jpg'),
+      ].sort()
+    )
   })
 })
 

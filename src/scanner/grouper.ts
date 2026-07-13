@@ -65,6 +65,41 @@ export function collectMedia(dir: string): string[] {
   return results
 }
 
+/** Split a comma-separated NAS_PHOTO_PATH value into individual root paths */
+export function parsePhotoPaths(value: string): string[] {
+  return value
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Collect media from multiple root paths. Files with the same basename and
+ * size are treated as the same photo; the root listed first wins.
+ */
+export function collectMediaFromRoots(roots: string[]): string[] {
+  const seen = new Set<string>()
+  const results: string[] = []
+
+  for (const root of roots) {
+    for (const mediaPath of collectMedia(root)) {
+      let size: number
+      try {
+        size = statSync(mediaPath).size
+      } catch (error) {
+        warnUnreadableMedia(mediaPath, error)
+        continue
+      }
+      const key = `${path.basename(mediaPath)}:${size}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      results.push(mediaPath)
+    }
+  }
+
+  return results
+}
+
 function warnUnreadableMedia(mediaPath: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
   console.warn(`⚠ Skipping unreadable media: ${mediaPath} (${message})`)
@@ -283,7 +318,7 @@ export async function groupImages({
 } = {}): Promise<ImageGroup> {
   const allMedia = inputListPath
     ? readInputList(inputListPath)
-    : collectMedia(config.nas.photoPath)
+    : collectMediaFromRoots(parsePhotoPaths(config.nas.photoPath))
 
   if (span === 'weekly') {
     if (!month) {
