@@ -1,5 +1,5 @@
 import path from 'path'
-import { writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import {
   groupImages,
   isImagePath,
@@ -77,12 +77,59 @@ export function buildGroupOutputPath(
   return path.join(resolvedRoot, `${groupKey}_highlight.mp4`)
 }
 
+/**
+ * Exclude highlights whose group_key was deleted from the NAS viewer UI.
+ * Deletion only hides the entry from the manifest — the .mp4 file itself is
+ * left untouched on disk.
+ */
+export function filterDeletedHighlights<T extends { group_key: string }>(
+  highlights: T[],
+  deletedKeys: string[]
+): T[] {
+  const deleted = new Set(deletedKeys)
+  return highlights.filter((h) => !deleted.has(h.group_key))
+}
+
+interface LoadDeletedKeysOptions {
+  readFile?: (target: string) => string
+  exists?: (target: string) => boolean
+}
+
+/**
+ * Read meta/deleted-keys.json (written by the NAS-side delete API). Missing
+ * or malformed files are treated as "nothing deleted yet".
+ */
+export function loadDeletedKeys(
+  metaOutputPath: string,
+  {
+    readFile = (target) => readFileSync(target, 'utf8'),
+    exists = existsSync,
+  }: LoadDeletedKeysOptions = {}
+): string[] {
+  const deletedKeysPath = path.join(metaOutputPath, 'deleted-keys.json')
+  if (!exists(deletedKeysPath)) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(readFile(deletedKeysPath))
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    return parsed.filter((key): key is string => typeof key === 'string')
+  } catch {
+    return []
+  }
+}
+
 function exportManifest() {
   const metaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
   const mediaRootPath = normalizeMediaRootPath(config.nas.outputPath)
-  const highlights = highlightDb
-    .list()
-    .map((h) => buildManifestHighlight(h, mediaRootPath))
+  const deletedKeys = loadDeletedKeys(metaOutputPath)
+  const highlights = filterDeletedHighlights(
+    highlightDb.list().map((h) => buildManifestHighlight(h, mediaRootPath)),
+    deletedKeys
+  )
   const dest = path.join(metaOutputPath, 'highlights.json')
   writeFileSync(dest, JSON.stringify(highlights, null, 2), 'utf8')
   console.log(`📄 Manifest written: ${dest}`)

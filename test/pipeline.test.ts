@@ -4,6 +4,8 @@ import {
   buildHighlightSegments,
   buildManifestHighlight,
   buildThumbnailOutputPath,
+  filterDeletedHighlights,
+  loadDeletedKeys,
   normalizeDateRange,
   selectThumbnailSegment,
   shouldSkipHighlightGeneration,
@@ -215,6 +217,56 @@ describe('normalizeDateRange', () => {
 
   it('どちらも無ければ undefined を返す', () => {
     expect(normalizeDateRange({})).toBeUndefined()
+  })
+})
+
+describe('filterDeletedHighlights', () => {
+  it('削除済みキーに含まれるハイライトを manifest から除外する', () => {
+    const highlights = [
+      { group_key: '2026-03-21' },
+      { group_key: '2026-03-22' },
+    ]
+
+    expect(filterDeletedHighlights(highlights, ['2026-03-21'])).toEqual([
+      { group_key: '2026-03-22' },
+    ])
+  })
+
+  it('削除済みキーが空なら全件そのまま返す', () => {
+    const highlights = [{ group_key: '2026-03-21' }]
+
+    expect(filterDeletedHighlights(highlights, [])).toEqual(highlights)
+  })
+})
+
+describe('loadDeletedKeys', () => {
+  it('deleted-keys.json が無ければ空配列を返す（ファイルは読みにいかない）', () => {
+    const result = loadDeletedKeys('/tmp/does-not-matter', {
+      exists: () => false,
+      readFile: () => {
+        throw new Error('exists=false のときは readFile を呼んではいけない')
+      },
+    })
+
+    expect(result).toEqual([])
+  })
+
+  it('deleted-keys.json の内容を文字列配列として返す', () => {
+    const result = loadDeletedKeys('/tmp/does-not-matter', {
+      exists: () => true,
+      readFile: () => JSON.stringify(['2026-03-21', '2026-03-22']),
+    })
+
+    expect(result).toEqual(['2026-03-21', '2026-03-22'])
+  })
+
+  it('壊れた JSON の場合は空配列にフォールバックする', () => {
+    const result = loadDeletedKeys('/tmp/does-not-matter', {
+      exists: () => true,
+      readFile: () => '{not valid json',
+    })
+
+    expect(result).toEqual([])
   })
 })
 

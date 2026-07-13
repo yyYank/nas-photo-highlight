@@ -10,3 +10,19 @@ services:
       # 動画出力先: PhotoLibrary/{yyyy}/{mm}/*.mp4
       - /volume1/Photos/PhotoLibrary:/usr/share/nginx/media:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+  # 削除API（非表示のみ）: highlights.json からの除去と deleted-keys.json
+  # への記録を行う。meta ディレクトリだけ rw でマウントする。
+  api:
+    image: oven/bun:alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - /volume1/highlights:/meta
+      - ./api:/app/api:ro
+    environment:
+      META_DIR: /meta
+      PORT: "8899"
+    command: ["bun", "run", "api/server.ts"]

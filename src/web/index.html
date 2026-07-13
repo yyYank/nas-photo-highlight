@@ -11,12 +11,14 @@
     header h1 { font-size: 1.4rem; font-weight: 400; letter-spacing: 0.1em; color: #fff; }
     header p  { font-size: 0.8rem; color: #555; }
     #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; padding: 2rem 2.5rem; }
-    .card { background: #181818; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .card { position: relative; background: #181818; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
     .card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
     .card video { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #111; }
-    .card-info { padding: 0.9rem 1rem; }
+    .card-info { padding: 0.9rem 1rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
     .card-info .date { font-size: 1rem; font-weight: 500; letter-spacing: 0.05em; }
     .card-info .meta { font-size: 0.75rem; color: #555; margin-top: 0.25rem; }
+    .delete-btn { flex: none; border: none; background: transparent; color: #555; font-size: 1rem; line-height: 1; cursor: pointer; padding: 0.25rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+    .delete-btn:hover { color: #ff5c5c; background: rgba(255,92,92,0.1); }
     #empty { display: none; grid-column: 1 / -1; text-align: center; padding: 5rem; color: #444; font-size: 0.9rem; line-height: 2; white-space: pre-line; }
   </style>
 </head>
@@ -59,10 +61,25 @@
           <video src="${url}" poster="${thumbnailUrl}" muted loop preload="metadata"
                  onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>
           <div class="card-info">
-            <div class="date">${h.group_key}</div>
-            <div class="meta">${h.image_count} photos · ${new Date(h.created_at).toLocaleDateString('ja-JP')}</div>
+            <div>
+              <div class="date">${h.group_key}</div>
+              <div class="meta">${h.image_count} photos · ${new Date(h.created_at).toLocaleDateString('ja-JP')}</div>
+            </div>
+            <button class="delete-btn" type="button" title="このハイライトを削除（非表示）">✕</button>
           </div>`
         card.querySelector('video').addEventListener('click', () => window.open(url, '_blank'))
+        card.querySelector('.delete-btn').addEventListener('click', async (event) => {
+          event.stopPropagation()
+          if (!confirm(`「${h.group_key}」を削除しますか？\n（元動画は消えず、一覧から非表示になります）`)) return
+          try {
+            const res = await fetch(`/api/highlights/${encodeURIComponent(h.group_key)}`, { method: 'DELETE' })
+            if (!res.ok) throw new Error()
+            card.remove()
+            subtitle.textContent = `${grid.querySelectorAll('.card').length} highlight${grid.querySelectorAll('.card').length !== 1 ? 's' : ''}`
+          } catch {
+            alert('削除に失敗しました。ネットワークまたはNAS側APIを確認してください。')
+          }
+        })
         grid.appendChild(card)
       }
     }
