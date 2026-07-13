@@ -139,6 +139,37 @@ describe('buildBgmMixFilter', () => {
   })
 })
 
+describe('buildBgmMixFilter の区間圧縮', () => {
+  it('連続・重複する区間は1つの between にマージされる（式の肥大化防止）', () => {
+    expect(
+      buildBgmMixFilter(0.7, [
+        { start: 0, end: 23.965 },
+        { start: 23.965, end: 52.75 },
+        { start: 52.75, end: 58 },
+      ])
+    ).toBe(
+      "[1:a]volume=0.7[bgm0];[bgm0]volume=0.28:enable='between(t,0,58)'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]"
+    )
+  })
+
+  it('出力上限（60秒）以降の区間は式に含めず、跨ぐ区間は60秒で打ち切る', () => {
+    expect(
+      buildBgmMixFilter(0.7, [
+        { start: 50, end: 70 },
+        { start: 100, end: 200 },
+      ])
+    ).toBe(
+      "[1:a]volume=0.7[bgm0];[bgm0]volume=0.28:enable='between(t,50,60)'[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]"
+    )
+  })
+
+  it('60秒以降の区間しか無い場合はダッキングなしの単純mixになる', () => {
+    expect(buildBgmMixFilter(0.7, [{ start: 100, end: 200 }])).toBe(
+      '[1:a]volume=0.7[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]'
+    )
+  })
+})
+
 describe('buildVideoBgmVolumeRanges', () => {
   it('動画セグメント区間だけ BGM をさらに下げる範囲を作る', () => {
     expect(

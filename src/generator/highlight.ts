@@ -157,19 +157,47 @@ export function buildVideoBgmVolumeRanges(
   })
 }
 
+/**
+ * Merge contiguous/overlapping ranges and clip them to the output length.
+ * Rendered clips line up back-to-back, so consecutive video segments produce
+ * adjacent ranges; merging keeps the ffmpeg enable expression from growing
+ * with the segment count (a per-segment expression can exhaust the ffmpeg
+ * expression parser on long timelines).
+ */
+export function mergeVideoBgmRanges(
+  videoRanges: TimeRange[],
+  maxSeconds: number = MAX_HIGHLIGHT_SECONDS
+): TimeRange[] {
+  const merged: TimeRange[] = []
+
+  for (const range of videoRanges) {
+    if (range.start >= maxSeconds) continue
+    const end = Math.min(range.end, maxSeconds)
+    const last = merged[merged.length - 1]
+    if (last && range.start <= last.end) {
+      last.end = Math.max(last.end, end)
+    } else {
+      merged.push({ start: range.start, end })
+    }
+  }
+
+  return merged
+}
+
 export function buildBgmMixFilter(
   bgmVolume: number,
   videoRanges: TimeRange[]
 ): string {
   const baseLabel = '[1:a]volume='
-  if (videoRanges.length === 0) {
+  const mergedRanges = mergeVideoBgmRanges(videoRanges)
+  if (mergedRanges.length === 0) {
     return `${baseLabel}${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[aout]`
   }
 
   const reducedVolume = Number(
     (bgmVolume * VIDEO_BGM_MULTIPLIER).toFixed(3)
   )
-  const enableExpression = videoRanges
+  const enableExpression = mergedRanges
     .map((range) => `between(t,${range.start},${range.end})`)
     .join('+')
 
