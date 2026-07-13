@@ -139,7 +139,7 @@ src/
 |---|---|---|
 | `NAS_PHOTO_PATH` | — | マウント済み NAS 上の写真ディレクトリ |
 | `NAS_META_OUTPUT_PATH` | `NAS_OUTPUT_PATH` | `index.html` / `highlights.json` / `last-run.json` の出力先パス |
-| `NAS_OUTPUT_PATH` | — | ハイライト `.mp4` の出力先パス。`{yyyy}` / `{mm}` を利用可能。`NAS_PHOTO_PATH` 配下は避ける |
+| `NAS_OUTPUT_PATH` | — | ハイライト `.mp4` の出力先パス（例: `/Volumes/home/Photos/highlights/media/{yyyy}/{mm}`）。`{yyyy}` / `{mm}` を利用可能。`NAS_PHOTO_PATH`（入力の写真ライブラリ）配下は避け、別ルートに分離する |
 | `GROUP_BY` | `date` | `date` または `folder` |
 | `IMAGES_PER_HIGHLIGHT` | `25` | 1 ハイライトあたりの最大ベストショット数 |
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
@@ -157,10 +157,16 @@ src/
 | `NAS_DEPLOY_HOST` | _(empty)_ | NAS へ `ssh` / `scp` する接続先 |
 | `NAS_DEPLOY_DIR` | _(empty)_ | NAS 上で `docker-compose.yml` と `nginx.conf` を配置するディレクトリ |
 | `NAS_DEPLOY_META_PATH` | _(empty)_ | NAS 上で `index.html` / `highlights.json` / `last-run.json` を読む bind mount 元 |
-| `NAS_DEPLOY_MEDIA_PATH` | _(empty)_ | NAS 上で `PhotoLibrary` を読む bind mount 元。`{yyyy}` / `{mm}` を含む場合は配信ルートへ正規化 |
+| `NAS_DEPLOY_MEDIA_PATH` | _(empty)_ | NAS 上でハイライト動画（`NAS_OUTPUT_PATH` の実体）を読む bind mount 元。`{yyyy}` / `{mm}` を含む場合は配信ルートへ正規化 |
 | `NAS_DEPLOY_PORT` | `8888` | NAS 上で公開する HTTP ポート |
 | `NAS_DEPLOY_DOCKER_BIN` | `docker` | 非対話 `ssh` で使う Docker CLI パス。Synology では `/usr/local/bin/docker` のことがある |
 | `CRON_SCHEDULE` | `0 2 * * *` | 自動実行のタイミング |
+
+### 出力先フォルダ（`{yyyy}` / `{mm}`）の解決ルール
+
+`NAS_OUTPUT_PATH` の `{yyyy}` / `{mm}` は、原則としてグループの**撮影日**（`GROUP_BY=date` のグループキー、`YYYY-MM-DD`）から解決されます。たとえば撮影日 `2026-03-27` のグループは、パイプラインをいつ実行しても `<ルート>/2026/03/2026-03-27_highlight.mp4` に保存されます。
+
+`GROUP_BY=folder` などでグループキーが `YYYY-MM-DD` 形式にならない場合は、フォールバックとして**実行日**の年月が使われます。
 
 ## NAS Web Deploy
 
@@ -169,7 +175,7 @@ src/
 注意:
 
 - `NAS_PHOTO_PATH` / `NAS_META_OUTPUT_PATH` / `NAS_OUTPUT_PATH` はローカル Mac の SMB マウントパスです
-- `NAS_OUTPUT_PATH` は `NAS_PHOTO_PATH` 配下に置かないでください。現在は `*_highlight.mp4` / `*_highlight_thumb.jpg` をスキャン除外していますが、出力先を分離しておく方が安全です
+- `NAS_OUTPUT_PATH` は `NAS_PHOTO_PATH`（入力の写真ライブラリ）配下に置かないでください。生成物を入力ライブラリと混在させないよう、たとえば `.../highlights/media/{yyyy}/{mm}` のように別ルートへ分離することを推奨します
 - Docker bind mount には使えないので、NAS 側の実パスは `NAS_DEPLOY_META_PATH` / `NAS_DEPLOY_MEDIA_PATH` で別に指定します
 - まず `bun run deploy:nas:dry-run` で実行予定コマンドを確認してください
 

@@ -19,6 +19,32 @@ export function resolveOutputPath(
   return outputPathTemplate.replaceAll('{yyyy}', yyyy).replaceAll('{mm}', mm)
 }
 
+const GROUP_KEY_DATE_PATTERN = /^(\d{4})-(\d{2})-\d{2}$/
+
+/**
+ * Resolve {yyyy}/{mm} using the group's own capture date (groupKey, "YYYY-MM-DD")
+ * so that a group's highlight always lands in its own year/month folder,
+ * regardless of when the pipeline actually runs.
+ *
+ * Falls back to `fallbackDate` (実行日) when groupKey isn't in that shape —
+ * e.g. GROUP_BY=folder, where groups are keyed by folder name.
+ */
+export function resolveOutputPathForGroup(
+  outputPathTemplate: string,
+  groupKey: string,
+  fallbackDate: Date = new Date()
+): string {
+  const match = GROUP_KEY_DATE_PATTERN.exec(groupKey)
+  const [yyyy, mm] = match
+    ? [match[1], match[2]]
+    : [
+        String(fallbackDate.getFullYear()),
+        String(fallbackDate.getMonth() + 1).padStart(2, '0'),
+      ]
+
+  return outputPathTemplate.replaceAll('{yyyy}', yyyy).replaceAll('{mm}', mm)
+}
+
 function explainOutputPathError(
   outputPath: string,
   error: NodeJS.ErrnoException

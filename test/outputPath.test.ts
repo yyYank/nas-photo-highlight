@@ -3,6 +3,7 @@ import {
   prepareMetaOutputPath,
   prepareOutputPath,
   resolveOutputPath,
+  resolveOutputPathForGroup,
 } from '../src/outputPath'
 
 describe('resolveOutputPath', () => {
@@ -22,6 +23,46 @@ describe('resolveOutputPath', () => {
     )
 
     expect(resolved).toBe('/Volumes/home/Photos/PhotoLibrary')
+  })
+})
+
+describe('resolveOutputPathForGroup', () => {
+  it('グループキーが撮影日（YYYY-MM-DD）形式なら、その年月で {yyyy}/{mm} を展開する', () => {
+    // 実行日（2026-07-13）ではなく、撮影日グループキー（2026-03-27）の年月が使われることを検証する
+    const resolved = resolveOutputPathForGroup(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      '2026-03-27',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(resolved).toBe('/Volumes/home/Photos/highlights/media/2026/03')
+  })
+
+  it('グループキーが日付形式でなければ、実行日（fallbackDate）で {yyyy}/{mm} を展開する', () => {
+    // GROUP_BY=folder のようにグループキーが日付でない場合のフォールバック挙動を検証する
+    const resolved = resolveOutputPathForGroup(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      'my-trip-folder',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(resolved).toBe('/Volumes/home/Photos/highlights/media/2026/07')
+  })
+
+  it('fallbackDate を省略した場合は現在日時を使う', () => {
+    // デフォルト引数（new Date()）が機能することを、非日付グループキーで確認する
+    const now = new Date()
+    const expectedYyyy = String(now.getFullYear())
+    const expectedMm = String(now.getMonth() + 1).padStart(2, '0')
+
+    const resolved = resolveOutputPathForGroup(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      'my-trip-folder'
+    )
+
+    expect(resolved).toBe(
+      `/Volumes/home/Photos/highlights/media/${expectedYyyy}/${expectedMm}`
+    )
   })
 })
 

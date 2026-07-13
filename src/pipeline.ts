@@ -21,6 +21,7 @@ import {
   prepareMetaOutputPath,
   prepareOutputPath,
   resolveOutputPath,
+  resolveOutputPathForGroup,
 } from './outputPath'
 import { saveLastRunSummary, type PipelineRunSummary } from './notify'
 import type { HighlightRecord } from './db/index'
@@ -56,6 +57,24 @@ export function buildManifestHighlight(
 
 function normalizeMediaRootPath(outputPathTemplate: string) {
   return outputPathTemplate.replace(/\/\{yyyy\}(?:\/\{mm\})?(?:\/.*)?$/, '')
+}
+
+/**
+ * Build the final .mp4 output path for a group, resolving {yyyy}/{mm} from the
+ * group's own capture date (groupKey) instead of the date the pipeline runs on.
+ * See resolveOutputPathForGroup for the non-date-groupKey fallback behavior.
+ */
+export function buildGroupOutputPath(
+  outputPathTemplate: string,
+  groupKey: string,
+  fallbackDate: Date = new Date()
+): string {
+  const resolvedRoot = resolveOutputPathForGroup(
+    outputPathTemplate,
+    groupKey,
+    fallbackDate
+  )
+  return path.join(resolvedRoot, `${groupKey}_highlight.mp4`)
 }
 
 function exportManifest() {
@@ -203,9 +222,10 @@ export async function runPipeline({
 } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning media...')
   const resolvedMetaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
+  // 実行日ベースの解決結果。実際の出力先は group ごとに buildGroupOutputPath で
+  // 撮影日から解決するため、ここではサマリ表示用の代表値としてのみ使う。
   const resolvedOutputPath = resolveOutputPath(config.nas.outputPath)
   prepareMetaOutputPath(resolvedMetaOutputPath)
-  prepareOutputPath(resolvedOutputPath)
 
   const dateRange = normalizeDateRange({ dateFrom, dateTo })
   const groups = await groupImages({
@@ -228,7 +248,7 @@ export async function runPipeline({
     const imagePaths = mediaPaths.filter(isImagePath)
     const videoPaths = mediaPaths.filter(isVideoPath)
 
-    const outputPath = path.join(resolvedOutputPath, `${key}_highlight.mp4`)
+    const outputPath = buildGroupOutputPath(config.nas.outputPath, key)
     const existingHighlight = highlightDb.find(key)
 
     if (
@@ -245,6 +265,7 @@ export async function runPipeline({
     console.log(
       `\n🎬 Processing: ${key} (${imagePaths.length} images, ${videoPaths.length} videos)`
     )
+    prepareOutputPath(path.dirname(outputPath))
 
     const imageScores =
       imagePaths.length > 0 ? await scoreImages(imagePaths) : []

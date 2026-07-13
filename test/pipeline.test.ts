@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  buildGroupOutputPath,
   buildHighlightSegments,
   buildManifestHighlight,
   buildThumbnailOutputPath,
@@ -69,6 +70,59 @@ describe('buildManifestHighlight', () => {
       image_count: 8,
       created_at: '2026-03-27 00:22:35',
     })
+  })
+
+  it('入力ライブラリと分離した出力ルート（highlights/media）でも相対パスを正しく組み立てる', () => {
+    // NAS_OUTPUT_PATH が NAS_PHOTO_PATH 配下から分離された新しいルートでも
+    // manifest の relative_path / thumbnail_relative_path が壊れないことを検証する
+    const result = buildManifestHighlight(
+      {
+        group_key: '2026-03-27',
+        output_path:
+          '/Volumes/home/Photos/highlights/media/2026/03/2026-03-27_highlight.mp4',
+        image_count: 10,
+        created_at: '2026-03-27 00:22:35',
+        id: 2,
+        updated_at: '2026-03-27 00:22:35',
+      },
+      '/Volumes/home/Photos/highlights/media'
+    )
+
+    expect(result).toEqual({
+      group_key: '2026-03-27',
+      filename: '2026-03-27_highlight.mp4',
+      relative_path: '2026/03/2026-03-27_highlight.mp4',
+      thumbnail_relative_path: '2026/03/2026-03-27_highlight_thumb.jpg',
+      image_count: 10,
+      created_at: '2026-03-27 00:22:35',
+    })
+  })
+})
+
+describe('buildGroupOutputPath', () => {
+  it('撮影日グループキー（YYYY-MM-DD）から年月フォルダを解決して出力パスを組み立てる', () => {
+    // 実行日ではなく、グループの撮影日（2026-03-27）の年月フォルダに保存されることを検証する
+    const result = buildGroupOutputPath(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      '2026-03-27',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(result).toBe(
+      '/Volumes/home/Photos/highlights/media/2026/03/2026-03-27_highlight.mp4'
+    )
+  })
+
+  it('日付形式でないグループキー（GROUP_BY=folder）は実行日のフォルダにフォールバックする', () => {
+    const result = buildGroupOutputPath(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      'my-trip-folder',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(result).toBe(
+      '/Volumes/home/Photos/highlights/media/2026/07/my-trip-folder_highlight.mp4'
+    )
   })
 })
 
