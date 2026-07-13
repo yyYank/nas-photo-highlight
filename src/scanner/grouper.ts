@@ -65,6 +65,11 @@ export function collectMedia(dir: string): string[] {
   return results
 }
 
+function warnUnreadableMedia(mediaPath: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  console.warn(`⚠ Skipping unreadable media: ${mediaPath} (${message})`)
+}
+
 async function getCapturedAt(mediaPath: string): Promise<Date> {
   try {
     if (isImagePath(mediaPath)) {
@@ -103,7 +108,13 @@ export async function filterMediaByDateRange(
 
   const filtered: string[] = []
   for (const mediaPath of mediaPaths) {
-    const dateKey = await getDateKeyFn(mediaPath)
+    let dateKey: string
+    try {
+      dateKey = await getDateKeyFn(mediaPath)
+    } catch (error) {
+      warnUnreadableMedia(mediaPath, error)
+      continue
+    }
     if (range.dateFrom && dateKey < range.dateFrom) {
       continue
     }
@@ -122,13 +133,22 @@ async function sortGroupMedia(
   mediaPaths: string[],
   getCapturedAtFn: (mediaPath: string) => Promise<Date>
 ) {
-  const dated = await Promise.all(
-    mediaPaths.map(async (mediaPath, index) => ({
-      mediaPath,
-      capturedAt: await getCapturedAtFn(mediaPath),
-      index,
-    }))
-  )
+  const dated = (
+    await Promise.all(
+      mediaPaths.map(async (mediaPath, index) => {
+        try {
+          return {
+            mediaPath,
+            capturedAt: await getCapturedAtFn(mediaPath),
+            index,
+          }
+        } catch (error) {
+          warnUnreadableMedia(mediaPath, error)
+          return undefined
+        }
+      })
+    )
+  ).filter((item) => item !== undefined)
 
   dated.sort((a, b) => {
     const timeDiff = a.capturedAt.getTime() - b.capturedAt.getTime()
@@ -155,7 +175,13 @@ export async function groupListedMedia(
     }
   } else {
     for (const p of mediaPaths) {
-      const key = await getDateKeyFn(p)
+      let key: string
+      try {
+        key = await getDateKeyFn(p)
+      } catch (error) {
+        warnUnreadableMedia(p, error)
+        continue
+      }
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(p)
     }

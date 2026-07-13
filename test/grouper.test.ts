@@ -250,3 +250,52 @@ describe('collectMedia', () => {
     expect(collectMedia(dir)).toEqual([originalImage, originalVideo])
   })
 })
+
+describe('読めないファイルのスキップ', () => {
+  const failingDateKey = async (mediaPath: string) => {
+    if (mediaPath.includes('ghost')) {
+      throw Object.assign(new Error('ENOENT: no such file or directory'), {
+        code: 'ENOENT',
+      })
+    }
+    return '2026-06-16'
+  }
+
+  it('日付キー取得に失敗したファイルは範囲フィルタで例外にせずスキップする', async () => {
+    const filtered = await filterMediaByDateRange(
+      ['/Volumes/photo/a.jpg', '/Volumes/photo/ghost.jpg'],
+      { dateFrom: '2026-06-15', dateTo: '2026-06-21' },
+      failingDateKey
+    )
+
+    expect(filtered).toEqual(['/Volumes/photo/a.jpg'])
+  })
+
+  it('日付キー取得に失敗したファイルは date グループ化で例外にせずスキップする', async () => {
+    const groups = await groupListedMedia(
+      ['/Volumes/photo/a.jpg', '/Volumes/photo/ghost.jpg'],
+      'date',
+      failingDateKey,
+      async () => new Date('2026-06-16T10:00:00Z')
+    )
+
+    expect([...groups.keys()]).toEqual(['2026-06-16'])
+    expect(groups.get('2026-06-16')).toEqual(['/Volumes/photo/a.jpg'])
+  })
+
+  it('撮影日時取得に失敗したファイルはグループ内ソートで例外にせず除外する', async () => {
+    const groups = await groupListedMedia(
+      ['/Volumes/photo/a.jpg', '/Volumes/photo/ghost.jpg'],
+      'date',
+      async () => '2026-06-16',
+      async (mediaPath) => {
+        if (mediaPath.includes('ghost')) {
+          throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+        }
+        return new Date('2026-06-16T10:00:00Z')
+      }
+    )
+
+    expect(groups.get('2026-06-16')).toEqual(['/Volumes/photo/a.jpg'])
+  })
+})
