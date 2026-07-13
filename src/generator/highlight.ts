@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
 import { config } from '../config'
+import { resolveBgmPath } from './bgm'
 import { resolveFfmpegBin, resolveFfprobeBin } from '../infra/ffmpegBinary'
 
 const execFileAsync = promisify(execFile)
@@ -372,7 +373,8 @@ function buildConcatArgs(
   listPath: string,
   outputPath: string,
   dryRun: boolean,
-  renderedClips: RenderedSegmentClip[] = []
+  renderedClips: RenderedSegmentClip[] = [],
+  bgmPath: string | undefined = resolveBgmPath(config.bgmPath)
 ): string[] {
   const args = [
     '-hide_banner',
@@ -388,8 +390,8 @@ function buildConcatArgs(
     listPath,
   ]
 
-  if (config.bgmPath) {
-    args.push('-i', config.bgmPath)
+  if (bgmPath) {
+    args.push('-i', bgmPath)
     args.push(
       '-filter_complex',
       buildBgmMixFilter(

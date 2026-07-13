@@ -148,7 +148,7 @@ src/
 | `IMAGES_PER_HIGHLIGHT` | `25` | 1 ハイライトあたりの最大ベストショット数 |
 | `SECONDS_PER_IMAGE` | `3` | 画像 1 枚あたりの表示秒数 |
 | `MIN_IMAGES_TO_GENERATE` | `5` | これ未満のグループは生成をスキップ |
-| `BGM_PATH` | _(empty)_ | `.mp3` の絶対パス。空なら無効 |
+| `BGM_PATH` | _(empty)_ | `.mp3` ファイルまたはディレクトリの絶対パス。空なら無効。ディレクトリを指定すると直下の `.mp3` から動画生成ごとにランダムで1曲選ぶ（`.mp3` が無ければ警告を出して BGM なしで生成） |
 | `BGM_VOLUME` | `0.7` | BGM 音量の倍率。`1.0` で等倍、`0.7` で 30% ダウン |
 | `NOTIFY_PROVIDER` | `gmail` | `webhook` または `gmail` |
 | `BASE_URL` | _(empty)_ | 通知文に含めるハイライト動画のベース URL |
