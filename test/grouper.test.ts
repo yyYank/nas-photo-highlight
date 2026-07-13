@@ -146,15 +146,15 @@ describe('groupListedImages', () => {
 })
 
 describe('weekKeyFromDateKey', () => {
-  it('日を4分割して週キーに変換する（1-7=w1, 8-14=w2, 15-21=w3, 22-末日=w4）', () => {
-    expect(weekKeyFromDateKey('2026-04-01')).toBe('2026-04-w1')
-    expect(weekKeyFromDateKey('2026-04-07')).toBe('2026-04-w1')
-    expect(weekKeyFromDateKey('2026-04-08')).toBe('2026-04-w2')
-    expect(weekKeyFromDateKey('2026-04-14')).toBe('2026-04-w2')
-    expect(weekKeyFromDateKey('2026-04-15')).toBe('2026-04-w3')
-    expect(weekKeyFromDateKey('2026-04-21')).toBe('2026-04-w3')
-    expect(weekKeyFromDateKey('2026-04-22')).toBe('2026-04-w4')
-    expect(weekKeyFromDateKey('2026-04-30')).toBe('2026-04-w4')
+  it('日を4分割して週の開始日キーに変換する（1-7→01, 8-14→08, 15-21→15, 22-末日→22。既存の YYYY-MM-DD 命名と互換）', () => {
+    expect(weekKeyFromDateKey('2026-04-01')).toBe('2026-04-01')
+    expect(weekKeyFromDateKey('2026-04-07')).toBe('2026-04-01')
+    expect(weekKeyFromDateKey('2026-04-08')).toBe('2026-04-08')
+    expect(weekKeyFromDateKey('2026-04-14')).toBe('2026-04-08')
+    expect(weekKeyFromDateKey('2026-04-15')).toBe('2026-04-15')
+    expect(weekKeyFromDateKey('2026-04-21')).toBe('2026-04-15')
+    expect(weekKeyFromDateKey('2026-04-22')).toBe('2026-04-22')
+    expect(weekKeyFromDateKey('2026-04-30')).toBe('2026-04-22')
   })
 
   it('不正な日付キーなら例外を投げる', () => {
@@ -163,7 +163,7 @@ describe('weekKeyFromDateKey', () => {
 })
 
 describe('groupMediaByWeek', () => {
-  it('指定した年月内のメディアだけを週キー（YYYY-MM-wN）でグループ化する', async () => {
+  it('指定した年月内のメディアだけを週開始日キー（YYYY-MM-DD）でグループ化する', async () => {
     const groups = await groupMediaByWeek(
       [
         '/Volumes/photo/a.jpg', // 4/1 -> w1
@@ -185,14 +185,14 @@ describe('groupMediaByWeek', () => {
     )
 
     expect(Array.from(groups.keys())).toEqual([
-      '2026-04-w1',
-      '2026-04-w2',
-      '2026-04-w3',
-      '2026-04-w4',
+      '2026-04-01',
+      '2026-04-08',
+      '2026-04-15',
+      '2026-04-22',
     ])
-    expect(groups.get('2026-04-w1')).toEqual(['/Volumes/photo/a.jpg'])
-    expect(groups.get('2026-04-w4')).toEqual(['/Volumes/photo/d.jpg'])
-    // 対象月外（3/31）は除外されるため w1〜w4 の4グループのみ
+    expect(groups.get('2026-04-01')).toEqual(['/Volumes/photo/a.jpg'])
+    expect(groups.get('2026-04-22')).toEqual(['/Volumes/photo/d.jpg'])
+    // 対象月外（3/31）は除外されるため4週分の4グループのみ
     expect(groups.size).toBe(4)
   })
 
@@ -213,7 +213,7 @@ describe('groupMediaByWeek', () => {
       async () => new Date('2026-04-01T00:00:00.000Z')
     )
 
-    expect(groups.get('2026-04-w1')).toEqual([
+    expect(groups.get('2026-04-01')).toEqual([
       '/Volumes/photo/a.jpg',
       '/Volumes/photo/b.jpg',
       '/Volumes/photo/c.jpg',

@@ -197,8 +197,9 @@ export async function groupListedMedia(
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /**
- * Convert a "YYYY-MM-DD" date key into a "YYYY-MM-wN" week-of-month key.
- * The month is split into 4 weeks: w1=1-7, w2=8-14, w3=15-21, w4=22-末日.
+ * Convert a "YYYY-MM-DD" date key into the start date of its week-of-month.
+ * The month is split into 4 weeks (1-7, 8-14, 15-21, 22-end), and the key is
+ * the week's first day in the same "YYYY-MM-DD" format as daily group keys.
  */
 export function weekKeyFromDateKey(dateKey: string): string {
   const match = DATE_KEY_PATTERN.exec(dateKey)
@@ -208,14 +209,15 @@ export function weekKeyFromDateKey(dateKey: string): string {
 
   const [, yyyy, mm, dd] = match
   const day = Number.parseInt(dd, 10)
-  const week = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4
+  const weekStart = day <= 7 ? '01' : day <= 14 ? '08' : day <= 21 ? '15' : '22'
 
-  return `${yyyy}-${mm}-w${week}`
+  return `${yyyy}-${mm}-${weekStart}`
 }
 
 /**
  * Group media captured within a specific year/month into 4 weekly groups
- * (groupKey: "YYYY-MM-wN"). Media outside the target month are excluded.
+ * (groupKey: the week's start date, "YYYY-MM-DD"). Media outside the target
+ * month are excluded.
  * Within each week, media stay ordered by capture time (day groups are
  * concatenated in chronological/date-key order).
  */

@@ -19,12 +19,13 @@ export function resolveOutputPath(
   return outputPathTemplate.replaceAll('{yyyy}', yyyy).replaceAll('{mm}', mm)
 }
 
-const GROUP_KEY_DATE_PATTERN = /^(\d{4})-(\d{2})-(?:\d{2}|w[1-4])$/
+const GROUP_KEY_DATE_PATTERN = /^(\d{4})-(\d{2})-\d{2}$/
 
 /**
- * Resolve {yyyy}/{mm} using the group's own capture date (groupKey, "YYYY-MM-DD"
- * or the weekly form "YYYY-MM-wN") so that a group's highlight always lands in
- * its own year/month folder, regardless of when the pipeline actually runs.
+ * Resolve {yyyy}/{mm} using the group's own capture date (groupKey, "YYYY-MM-DD";
+ * weekly groups use the week's start date in the same format) so that a group's
+ * highlight always lands in its own year/month folder, regardless of when the
+ * pipeline actually runs.
  *
  * Falls back to `fallbackDate` (実行日) when groupKey isn't in that shape —
  * e.g. GROUP_BY=folder, where groups are keyed by folder name.
