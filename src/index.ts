@@ -19,6 +19,9 @@ if (options.runNow) {
     ffmpegThrottleMs: options.ffmpegThrottleMs,
     force: options.force,
     inputListPath: options.inputListPath,
+    month: options.month,
+    span: options.span,
+    year: options.year,
   })
   process.exit(0)
 } else if (options.notify) {

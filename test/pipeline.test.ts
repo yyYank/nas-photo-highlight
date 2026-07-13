@@ -97,6 +97,31 @@ describe('buildManifestHighlight', () => {
       created_at: '2026-03-27 00:22:35',
     })
   })
+
+  it('週単位グループキー（YYYY-MM-wN）でも manifest に group_key がそのまま載る', () => {
+    // span=weekly のグループキーが特別扱いなしで manifest に反映されることを確認する
+    const result = buildManifestHighlight(
+      {
+        group_key: '2026-04-w1',
+        output_path:
+          '/Volumes/home/Photos/highlights/media/2026/04/2026-04-w1_highlight.mp4',
+        image_count: 12,
+        created_at: '2026-04-08 00:22:35',
+        id: 3,
+        updated_at: '2026-04-08 00:22:35',
+      },
+      '/Volumes/home/Photos/highlights/media'
+    )
+
+    expect(result).toEqual({
+      group_key: '2026-04-w1',
+      filename: '2026-04-w1_highlight.mp4',
+      relative_path: '2026/04/2026-04-w1_highlight.mp4',
+      thumbnail_relative_path: '2026/04/2026-04-w1_highlight_thumb.jpg',
+      image_count: 12,
+      created_at: '2026-04-08 00:22:35',
+    })
+  })
 })
 
 describe('buildGroupOutputPath', () => {
@@ -122,6 +147,19 @@ describe('buildGroupOutputPath', () => {
 
     expect(result).toBe(
       '/Volumes/home/Photos/highlights/media/2026/07/my-trip-folder_highlight.mp4'
+    )
+  })
+
+  it('週単位グループキー（YYYY-MM-wN）から年月フォルダを解決して出力パスを組み立てる', () => {
+    // span=weekly で生成したグループキー（2026-04-w1）でも撮影年月フォルダに保存されることを検証する
+    const result = buildGroupOutputPath(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      '2026-04-w1',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(result).toBe(
+      '/Volumes/home/Photos/highlights/media/2026/04/2026-04-w1_highlight.mp4'
     )
   })
 })

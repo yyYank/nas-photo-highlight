@@ -69,6 +69,10 @@ bun run generate --run-now --from 2026-03-01 --to 2026-03-07
 # input-list と併用して、さらに日付レンジで絞り込む
 bun run generate --run-now --input-list /path/to/input-files.txt --from 2026-03-01
 
+# 週単位（月内4分割: 1-7日/8-14日/15-21日/22日-末日）でグループ化し、週ごとに1本生成する
+bun run generate --span weekly --month 4
+bun run generate --span weekly --month 4 --year 2026
+
 # 指定した画像一覧だけでハイライトを生成
 bun run generate --input-list /path/to/input-files.txt
 

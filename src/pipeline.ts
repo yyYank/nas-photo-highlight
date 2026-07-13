@@ -212,6 +212,9 @@ export async function runPipeline({
   inputListPath,
   dateFrom,
   dateTo,
+  span = 'daily',
+  month,
+  year,
 }: {
   force?: boolean
   dryRun?: boolean
@@ -219,6 +222,9 @@ export async function runPipeline({
   inputListPath?: string
   dateFrom?: string
   dateTo?: string
+  span?: 'daily' | 'weekly'
+  month?: number
+  year?: number
 } = {}): Promise<PipelineRunSummary> {
   console.log('🔍 Scanning media...')
   const resolvedMetaOutputPath = resolveOutputPath(config.nas.metaOutputPath)
@@ -230,6 +236,9 @@ export async function runPipeline({
   const dateRange = normalizeDateRange({ dateFrom, dateTo })
   const groups = await groupImages({
     inputListPath,
+    span,
+    month,
+    year,
     ...dateRange,
   })
   console.log(`📁 Found ${groups.size} groups`)

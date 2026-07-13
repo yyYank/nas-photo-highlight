@@ -168,6 +168,65 @@ export async function groupListedMedia(
   return groups
 }
 
+const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/**
+ * Convert a "YYYY-MM-DD" date key into a "YYYY-MM-wN" week-of-month key.
+ * The month is split into 4 weeks: w1=1-7, w2=8-14, w3=15-21, w4=22-末日.
+ */
+export function weekKeyFromDateKey(dateKey: string): string {
+  const match = DATE_KEY_PATTERN.exec(dateKey)
+  if (!match) {
+    throw new Error(`weekKeyFromDateKey: invalid date key "${dateKey}"`)
+  }
+
+  const [, yyyy, mm, dd] = match
+  const day = Number.parseInt(dd, 10)
+  const week = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4
+
+  return `${yyyy}-${mm}-w${week}`
+}
+
+/**
+ * Group media captured within a specific year/month into 4 weekly groups
+ * (groupKey: "YYYY-MM-wN"). Media outside the target month are excluded.
+ * Within each week, media stay ordered by capture time (day groups are
+ * concatenated in chronological/date-key order).
+ */
+export async function groupMediaByWeek(
+  mediaPaths: string[],
+  year: number,
+  month: number,
+  getDateKeyFn: (mediaPath: string) => Promise<string> = getDateKey,
+  getCapturedAtFn: (mediaPath: string) => Promise<Date> = getCapturedAt
+): Promise<ImageGroup> {
+  const monthPrefix = `${year}-${String(month).padStart(2, '0')}`
+
+  const mediaInMonth: string[] = []
+  for (const mediaPath of mediaPaths) {
+    const dateKey = await getDateKeyFn(mediaPath)
+    if (dateKey.startsWith(monthPrefix)) {
+      mediaInMonth.push(mediaPath)
+    }
+  }
+
+  const dateGroups = await groupListedMedia(
+    mediaInMonth,
+    'date',
+    getDateKeyFn,
+    getCapturedAtFn
+  )
+
+  const weekGroups: ImageGroup = new Map()
+  for (const dateKey of Array.from(dateGroups.keys()).sort()) {
+    const weekKey = weekKeyFromDateKey(dateKey)
+    const existing = weekGroups.get(weekKey) ?? []
+    weekGroups.set(weekKey, existing.concat(dateGroups.get(dateKey)!))
+  }
+
+  return weekGroups
+}
+
 export async function groupListedImages(
   imagePaths: string[],
   groupBy: 'date' | 'folder',
@@ -185,10 +244,44 @@ export async function groupImages({
   inputListPath,
   dateFrom,
   dateTo,
-}: MediaDateRange & { inputListPath?: string } = {}): Promise<ImageGroup> {
+  span = 'daily',
+  month,
+  year,
+}: MediaDateRange & {
+  inputListPath?: string
+  span?: 'daily' | 'weekly'
+  month?: number
+  year?: number
+} = {}): Promise<ImageGroup> {
   const allMedia = inputListPath
     ? readInputList(inputListPath)
     : collectMedia(config.nas.photoPath)
+
+  if (span === 'weekly') {
+    if (!month) {
+      throw new Error('groupImages: month is required when span is "weekly"')
+    }
+
+    const resolvedYear = year ?? new Date().getFullYear()
+    const weekGroups = await groupMediaByWeek(allMedia, resolvedYear, month)
+    const mediaInMonth = Array.from(weekGroups.values()).reduce(
+      (sum, paths) => sum + paths.length,
+      0
+    )
+
+    if (inputListPath) {
+      console.log(
+        `Found ${mediaInMonth} media files in input list ${inputListPath} for ${resolvedYear}-${String(month).padStart(2, '0')}`
+      )
+    } else {
+      console.log(
+        `Found ${mediaInMonth} media files in ${config.nas.photoPath} for ${resolvedYear}-${String(month).padStart(2, '0')}`
+      )
+    }
+
+    return weekGroups
+  }
+
   const filteredMedia = await filterMediaByDateRange(allMedia, {
     dateFrom,
     dateTo,

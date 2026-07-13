@@ -22,6 +22,7 @@ describe('parseGenerateOptions', () => {
       inputListPath: undefined,
       notify: false,
       runNow: true,
+      span: 'daily',
     })
   })
 
@@ -58,6 +59,7 @@ describe('parseGenerateOptions', () => {
       inputListPath: '/tmp/input-list.txt',
       notify: false,
       runNow: true,
+      span: 'daily',
     })
   })
 
@@ -78,6 +80,7 @@ describe('parseGenerateOptions', () => {
       inputListPath: undefined,
       notify: false,
       runNow: true,
+      span: 'daily',
     })
   })
 
@@ -89,5 +92,80 @@ describe('parseGenerateOptions', () => {
 
   it('ffmpeg throttle ms を省略したらデフォルト値を使う', () => {
     expect(parseGenerateOptions(['--run-now']).ffmpegThrottleMs).toBe(5000)
+  })
+
+  it('span を省略したら daily になる', () => {
+    expect(parseGenerateOptions(['--run-now']).span).toBe('daily')
+  })
+
+  it('--span weekly --month --year を解釈する', () => {
+    const options = parseGenerateOptions([
+      '--run-now',
+      '--span',
+      'weekly',
+      '--month',
+      '4',
+      '--year',
+      '2026',
+    ])
+
+    expect(options.span).toBe('weekly')
+    expect(options.month).toBe(4)
+    expect(options.year).toBe(2026)
+  })
+
+  it('--span weekly で --year を省略したら現在年を使う', () => {
+    const options = parseGenerateOptions([
+      '--run-now',
+      '--span',
+      'weekly',
+      '--month',
+      '4',
+    ])
+
+    expect(options.span).toBe('weekly')
+    expect(options.year).toBe(new Date().getFullYear())
+  })
+
+  it('--span に不正な値を渡すと失敗する', () => {
+    expect(() => parseGenerateOptions(['--span', 'monthly'])).toThrow(
+      '--span must be "daily" or "weekly"'
+    )
+  })
+
+  it('--span weekly なのに --month がないと失敗する', () => {
+    expect(() => parseGenerateOptions(['--span', 'weekly'])).toThrow(
+      '--span weekly requires --month <1-12>'
+    )
+  })
+
+  it('--month が範囲外だと失敗する', () => {
+    expect(() =>
+      parseGenerateOptions(['--span', 'weekly', '--month', '13'])
+    ).toThrow('--month must be a number between 1 and 12')
+  })
+
+  it('--span weekly と --from/--to の併用は失敗する', () => {
+    expect(() =>
+      parseGenerateOptions([
+        '--span',
+        'weekly',
+        '--month',
+        '4',
+        '--from',
+        '2026-04-01',
+      ])
+    ).toThrow('--span weekly cannot be combined with --from/--to')
+
+    expect(() =>
+      parseGenerateOptions([
+        '--span',
+        'weekly',
+        '--month',
+        '4',
+        '--to',
+        '2026-04-30',
+      ])
+    ).toThrow('--span weekly cannot be combined with --from/--to')
   })
 })

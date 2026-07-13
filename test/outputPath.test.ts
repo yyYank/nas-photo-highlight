@@ -38,6 +38,17 @@ describe('resolveOutputPathForGroup', () => {
     expect(resolved).toBe('/Volumes/home/Photos/highlights/media/2026/03')
   })
 
+  it('グループキーが週単位（YYYY-MM-wN）形式なら、その年月で {yyyy}/{mm} を展開する', () => {
+    // weekly span で生成したグループキー（例: 2026-04-w1）でも撮影年月フォルダに解決されることを検証する
+    const resolved = resolveOutputPathForGroup(
+      '/Volumes/home/Photos/highlights/media/{yyyy}/{mm}',
+      '2026-04-w1',
+      new Date('2026-07-13T10:00:00+09:00')
+    )
+
+    expect(resolved).toBe('/Volumes/home/Photos/highlights/media/2026/04')
+  })
+
   it('グループキーが日付形式でなければ、実行日（fallbackDate）で {yyyy}/{mm} を展開する', () => {
     // GROUP_BY=folder のようにグループキーが日付でない場合のフォールバック挙動を検証する
     const resolved = resolveOutputPathForGroup(
